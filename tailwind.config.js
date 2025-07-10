@@ -8,7 +8,7 @@ module.exports = {
         'primary-color': '#5FA2AD',      // Azul MOTA
         'title-color': '#313E4B',        // Texto Iniciar Sesión
         'input-color': 'rgba(148,198,204,0.44)',  // Input fields
-        'background-color': '#EDEDED',   // Fondo general
+        'background-color': 'rgba(237,237,237,0.100)',  // Fondo general
       },
       fontSize: {
         'heading-xl': '32px', // MOTA
@@ -16,7 +16,7 @@ module.exports = {
         'label': '18px',      // Texto de correo/contraseña
       },
       spacing: {
-        'button-width': '250px',
+        'button-width': '160px',
       },
     },
   },
