@@ -7,8 +7,8 @@ module.exports = {
       colors: {
         'primary-color': '#5FA2AD',      // Azul MOTA
         'title-color': '#313E4B',        // Texto Iniciar Sesión
-        'input-color': 'rgba(148,198,204,0.44)',  // Input fields
-        'background-color': 'rgba(237,237,237,0.100)',  // Fondo general
+        'input-color': '#94C6CC',  // Input fields
+        'background-color': '#EDEDED',  // Fondo general
       },
       fontSize: {
         'heading-xl': '32px', // MOTA
