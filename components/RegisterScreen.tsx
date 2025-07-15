@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,11 @@ import {
   Platform,
   Modal,
   ScrollView,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; 
+import { SafeAreaView } from 'react-native-safe-area-context';
+import apiService from '../services/apiService';
+import { Area, Funcion } from '../types/api'; 
 
 export default function RegisterScreen() {
   const [area, setArea] = useState('');
@@ -24,18 +27,62 @@ export default function RegisterScreen() {
   const [telefonoConsultorio, setTelefonoConsultorio] = useState('');
   const [password, setPassword] = useState('');
 
-  const areas = [
-    'administrativa',
-    'secretaria',
-    'diseño',
-    'dado',
-    'fresadora',
-    'control de calidad',
-    'área de empaque',
-    'otro',
-  ];
+  // Estados para datos de la API
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [funciones, setFunciones] = useState<Funcion[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const funciones = ['administrador', 'trabajador', 'doctor'];
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Hacer peticiones en paralelo
+        const [areasResponse, funcionesResponse] = await Promise.all([
+          apiService.get<Area[]>('/areas'),
+          apiService.get<Funcion[]>('/funciones')
+        ]);
+        
+        // Cargar datos desde la API
+        setAreas(areasResponse);
+        setFunciones(funcionesResponse);
+      } catch (error: any) {
+        console.error('Error fetching data:', error);
+        Alert.alert('Error', 'No se pudieron cargar los datos. Intenta nuevamente.');
+        
+        // Fallback a datos estáticos si falla la API
+        setFunciones([
+          { id_funcion: 1, n_funcion: 'administrador' },
+          { id_funcion: 2, n_funcion: 'trabajador' },
+          { id_funcion: 3, n_funcion: 'doctor' },
+        ]);
+        setAreas([
+          { id_area: 1, n_area: 'administrativa' },
+          { id_area: 2, n_area: 'secretaria' },
+          { id_area: 3, n_area: 'diseño' },
+          { id_area: 4, n_area: 'dado' },
+          { id_area: 5, n_area: 'fresadora' },
+          { id_area: 6, n_area: 'control de calidad' },
+          { id_area: 7, n_area: 'área de empaque' },
+          { id_area: 8, n_area: 'otro' },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Si está cargando, mostrar mensaje
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-background-color justify-center items-center">
+        <Text className="text-black text-lg">Cargando...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-background-color"> 
@@ -146,46 +193,62 @@ export default function RegisterScreen() {
 
         {/* Modal Área */}
         <Modal visible={showAreaModal} transparent animationType="fade">
-          <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-            <View className="bg-white rounded-lg w-4/5 p-4">
+          <TouchableOpacity 
+            className="flex-1 justify-center items-center bg-black/40"
+            activeOpacity={1}
+            onPress={() => setShowAreaModal(false)}
+          >
+            <TouchableOpacity 
+              className="bg-white rounded-lg w-4/5 p-4"
+              activeOpacity={1}
+              onPress={() => {}}
+            >
               <ScrollView>
                 {areas.map((item) => (
                   <TouchableOpacity
-                    key={item}
+                    key={`area-${item.id_area}`}
                     onPress={() => {
-                      setArea(item);
+                      setArea(item.n_area);
                       setShowAreaModal(false);
                     }}
                     className="py-2"
                   >
-                    <Text className="text-black">{item}</Text>
+                    <Text className="text-black">{item.n_area}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
 
         {/* Modal Función */}
         <Modal visible={showFuncionModal} transparent animationType="fade">
-          <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
-            <View className="bg-white rounded-lg w-4/5 p-4">
+          <TouchableOpacity 
+            className="flex-1 justify-center items-center bg-black/40"
+            activeOpacity={1}
+            onPress={() => setShowFuncionModal(false)}
+          >
+            <TouchableOpacity 
+              className="bg-white rounded-lg w-4/5 p-4"
+              activeOpacity={1}
+              onPress={() => {}}
+            >
               <ScrollView>
                 {funciones.map((item) => (
                   <TouchableOpacity
-                    key={item}
+                    key={`funcion-${item.id_funcion}`}
                     onPress={() => {
-                      setFuncion(item);
+                      setFuncion(item.n_funcion);
                       setShowFuncionModal(false);
                     }}
                     className="py-2"
                   >
-                    <Text className="text-black">{item}</Text>
+                    <Text className="text-black">{item.n_funcion}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView> 
