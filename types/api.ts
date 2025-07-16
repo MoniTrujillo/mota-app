@@ -19,11 +19,11 @@ export interface User {
 }
 
 export interface CreateUserRequest {
-  nombre: string;
-  email: string;
+  nombre_completo: string;
+  id_area: number;
+  id_funcion: number;
   telefono: string;
-  telefonoConsultorio?: string;
-  password: string;
-  area: string;
-  funcion: string;
+  telefono_consultorio?: string;
+  contrasena: string;
+  correo: string;
 }

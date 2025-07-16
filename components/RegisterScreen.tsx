@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiService from '../services/apiService';
-import { Area, Funcion } from '../types/api'; 
+import { Area, Funcion, CreateUserRequest } from '../types/api'; 
 
-export default function RegisterScreen() {
+export default function RegisterScreen({ navigation }: { navigation?: any }) {
   const [area, setArea] = useState('');
   const [funcion, setFuncion] = useState('');
   const [showAreaModal, setShowAreaModal] = useState(false);
@@ -31,6 +31,98 @@ export default function RegisterScreen() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [funciones, setFunciones] = useState<Funcion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Función para manejar el registro
+  const handleRegister = async () => {
+    try {
+      // Validaciones básicas
+      if (!nombre.trim()) {
+        Alert.alert('Error', 'Por favor ingresa tu nombre completo');
+        return;
+      }
+      if (!area) {
+        Alert.alert('Error', 'Por favor selecciona un área');
+        return;
+      }
+      if (!funcion) {
+        Alert.alert('Error', 'Por favor selecciona una función');
+        return;
+      }
+      if (!telefono.trim()) {
+        Alert.alert('Error', 'Por favor ingresa tu teléfono');
+        return;
+      }
+      if (!correo.trim()) {
+        Alert.alert('Error', 'Por favor ingresa tu correo');
+        return;
+      }
+      if (!password.trim()) {
+        Alert.alert('Error', 'Por favor ingresa una contraseña');
+        return;
+      }
+
+      // Validar teléfono consultorio para doctores/médicos
+      if ((funcion.toLowerCase() === 'doctor' || funcion.toLowerCase() === 'médico') && !telefonoConsultorio.trim()) {
+        Alert.alert('Error', 'Por favor ingresa el teléfono del consultorio');
+        return;
+      }
+
+      setSubmitting(true);
+
+      // Buscar los IDs correspondientes
+      const selectedArea = areas.find(a => a.n_area === area);
+      const selectedFuncion = funciones.find(f => f.n_funcion === funcion);
+
+      if (!selectedArea || !selectedFuncion) {
+        Alert.alert('Error', 'Error al obtener la información seleccionada');
+        return;
+      }
+
+      // Preparar datos para el POST
+      const userData: CreateUserRequest = {
+        nombre_completo: nombre.trim(),
+        id_area: selectedArea.id_area,
+        id_funcion: selectedFuncion.id_funcion,
+        telefono: telefono.trim(),
+        contrasena: password.trim(),
+        correo: correo.trim(),
+      };
+
+      // Agregar teléfono consultorio solo si es doctor/médico
+      if ((funcion.toLowerCase() === 'doctor' || funcion.toLowerCase() === 'médico') && telefonoConsultorio.trim()) {
+        userData.telefono_consultorio = telefonoConsultorio.trim();
+      }
+
+      // Hacer la petición POST
+      const response = await apiService.post('/usuarios', userData);
+      
+      Alert.alert('Éxito', 'Usuario creado exitosamente', [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Limpiar formulario
+            setNombre('');
+            setArea('');
+            setFuncion('');
+            setTelefono('');
+            setCorreo('');
+            setTelefonoConsultorio('');
+            setPassword('');
+            
+            // Redirigir al LoginScreen
+            navigation?.navigate?.('Login');
+          }
+        }
+      ]);
+
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      Alert.alert('Error', error.message || 'Error al crear el usuario. Intenta nuevamente.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // Cargar datos al montar el componente
   useEffect(() => {
@@ -55,7 +147,7 @@ export default function RegisterScreen() {
         setFunciones([
           { id_funcion: 1, n_funcion: 'administrador' },
           { id_funcion: 2, n_funcion: 'trabajador' },
-          { id_funcion: 3, n_funcion: 'doctor' },
+          { id_funcion: 3, n_funcion: 'médico' },
         ]);
         setAreas([
           { id_area: 1, n_area: 'administrativa' },
@@ -157,7 +249,7 @@ export default function RegisterScreen() {
             />
 
            {/* Teléfono Consultorio si la función es doctor o médico */}
-{(funcion.toLowerCase() === 'doctor' || funcion.toLowerCase() === 'medico') && (
+{(funcion.toLowerCase() === 'doctor' || funcion.toLowerCase() === 'médico') && (
   <>
     <Text className="text-label font-bold text-black mb-2">Teléfono Consultorio</Text>
     <TextInput
@@ -180,13 +272,20 @@ export default function RegisterScreen() {
             />
 
             {/* Botón */}
-            <TouchableOpacity className="bg-primary-color px-4 py-3 rounded-md shadow-md w-button-width self-center">
+            <TouchableOpacity 
+              className="bg-primary-color px-4 py-3 rounded-md shadow-md w-button-width self-center"
+              onPress={handleRegister}
+              disabled={submitting}
+            >
               <Text className="text-white text-center font-medium text-base">
-                Crear Cuenta
+                {submitting ? 'Creando...' : 'Crear Cuenta'}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity className="mt-4 self-center">
+            <TouchableOpacity 
+              className="mt-4 self-center"
+              onPress={() => navigation?.navigate?.('Login')}
+            >
               <Text className="text-primary-color font-medium underline">Cancelar</Text>
             </TouchableOpacity>
           </View>
