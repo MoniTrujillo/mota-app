@@ -156,18 +156,19 @@ export default function RegisterScreen() {
               onChangeText={setCorreo}
             />
 
-            {/* Teléfono Consultorio solo si es doctor */}
-            {funcion === 'doctor' && (
-              <>
-                <Text className="text-label font-bold text-black mb-2">Teléfono Consultorio</Text>
-                <TextInput
-                  className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4"
-                  keyboardType="phone-pad"
-                  value={telefonoConsultorio}
-                  onChangeText={setTelefonoConsultorio}
-                />
-              </>
-            )}
+           {/* Teléfono Consultorio si la función es doctor o médico */}
+{(funcion.toLowerCase() === 'doctor' || funcion.toLowerCase() === 'medico') && (
+  <>
+    <Text className="text-label font-bold text-black mb-2">Teléfono Consultorio</Text>
+    <TextInput
+      className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4"
+      keyboardType="phone-pad"
+      value={telefonoConsultorio}
+      onChangeText={setTelefonoConsultorio}
+    />
+  </>
+)}
+
 
             {/* Contraseña */}
             <Text className="text-label font-bold text-black mb-2">Contraseña</Text>
