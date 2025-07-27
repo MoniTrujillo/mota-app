@@ -19,12 +19,7 @@ import {
   MaterialCommunityIcons,
   Entypo,
 } from '@expo/vector-icons';
-
-type MenuItemProps = {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-};
+import MenuItem from './MenuItem';
 
 const MENU_WIDTH = 250;
 
@@ -113,22 +108,5 @@ export default function AdminScreen() {
         </View>
       </View>
     </SafeAreaView>
-  );
-}
-
-function MenuItem({ icon, label, active = false }: MenuItemProps) {
-  return (
-    <TouchableOpacity
-      className={`flex-row items-center px-3 py-2 rounded-md mx-1 ${active ? 'bg-menu-active' : ''}`}
-    >
-      <View className={`mr-3 ${active ? 'text-white' : 'text-title-color'}`}>{icon}</View>
-      <Text 
-        className={`text-sm font-medium ${active ? 'text-white' : 'text-title-color'}`}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-    
   );
 }
