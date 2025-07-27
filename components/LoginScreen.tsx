@@ -29,8 +29,8 @@ export default function LoginScreen({ navigation }: { navigation?: any }) {
         return;
       }
 
-      // Intentar login
-      const success = await login(correo.trim(), password.trim());
+      // Intentar login - convertir correo a minúsculas para evitar errores
+      const success = await login(correo.trim().toLowerCase(), password.trim());
       
       if (!success) {
         Alert.alert('Error', 'Correo o contraseña incorrectos');
