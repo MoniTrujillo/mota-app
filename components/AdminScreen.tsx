@@ -7,7 +7,7 @@ import {
   TouchableWithoutFeedback,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,16 +20,41 @@ import {
   Entypo,
 } from '@expo/vector-icons';
 import MenuItem from './MenuItem';
+import { useAuth } from '../contexts/AuthContext';
 
 const MENU_WIDTH = 250;
 
+// Define los tipos de pantallas disponibles
+type Screen = 
+  | 'users' 
+  | 'createAccount'
+  | 'createOrders'
+  | 'tracking'
+  | 'qualityControl'
+  | 'pausedOrders'
+  | 'correction'
+  | 'packaging'
+  | 'delivery'
+  | 'pickup';
+
 export default function AdminScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<Screen>('users');
   const translateX = useSharedValue(-MENU_WIDTH);
+  const insets = useSafeAreaInsets();
+  const { logout } = useAuth();
 
   const toggleMenu = () => {
     translateX.value = withTiming(menuOpen ? -MENU_WIDTH : 0, { duration: 250 });
     setMenuOpen(!menuOpen);
+  };
+
+  const handleSelectMenuItem = (screen: Screen) => {
+    setCurrentScreen(screen);
+    // En dispositivos pequeños, cierra el menú automáticamente después de seleccionar
+    if (menuOpen) {
+      toggleMenu();
+    }
   };
 
   const animatedMenuStyle = useAnimatedStyle(() => {
@@ -38,16 +63,81 @@ export default function AdminScreen() {
     };
   });
 
+  // Renderiza el contenido según la pantalla seleccionada
+  const renderContent = () => {
+    switch (currentScreen) {
+      case 'users':
+        return (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-title-color text-xl font-bold">Ver Usuarios</Text>
+            <Text className="text-gray-600 mt-2">Lista de usuarios del sistema</Text>
+          </View>
+        );
+      case 'createAccount':
+        return (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-title-color text-xl font-bold">Crear Cuenta</Text>
+            <Text className="text-gray-600 mt-2">Formulario para crear nuevas cuentas</Text>
+          </View>
+        );
+      case 'createOrders':
+        return (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-title-color text-xl font-bold">Crear Pedidos</Text>
+            <Text className="text-gray-600 mt-2">Formulario para crear nuevos pedidos</Text>
+          </View>
+        );
+      // Añadir más casos para cada pantalla
+      default:
+        return (
+          <View className="flex-1 items-center justify-center">
+            <Text className="text-title-color text-xl font-bold">Selecciona una opción</Text>
+            <Text className="text-gray-600 mt-2">Utiliza el menú lateral para navegar</Text>
+          </View>
+        );
+    }
+  };
+
+  // Obtener el título según la pantalla actual
+  const getCurrentTitle = () => {
+    switch (currentScreen) {
+      case 'users': return 'Ver Usuarios';
+      case 'createAccount': return 'Crear Cuenta';
+      case 'createOrders': return 'Crear Pedidos';
+      case 'tracking': return 'Seguimiento';
+      case 'qualityControl': return 'Control de Calidad';
+      case 'pausedOrders': return 'Pedidos en Pausa';
+      case 'correction': return 'A Corrección';
+      case 'packaging': return 'Empaque';
+      case 'delivery': return 'A Domicilio';
+      case 'pickup': return 'Para Recoger';
+      default: return 'Panel de Administración';
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background-color" edges={['top', 'right', 'bottom', 'left']}>
       {/* Menú lateral -  */}
       <Animated.View
-        style={[{ position: 'absolute', zIndex: 10, height: '100%', width: MENU_WIDTH, top: 0 }, animatedMenuStyle]}
-        className="bg-sidebar-bg px-4 pt-10 pb-10" 
+        style={[
+          { 
+            position: 'absolute', 
+            zIndex: 20,  
+            width: MENU_WIDTH, 
+            top: 0,
+            left: 0,
+            bottom: 0,
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+            paddingLeft: insets.left
+          }, 
+          animatedMenuStyle
+        ]}
+        className="bg-sidebar-bg" 
       >
         <ScrollView 
           showsVerticalScrollIndicator={false}
-          className="pb-4" // Padding bottom para el scroll
+          contentContainerStyle={{ flexGrow: 1 }}
         >
           {/* Logo y título  */}
           <View className="items-center mb-8 mt-12"> 
@@ -61,25 +151,78 @@ export default function AdminScreen() {
 
           {/* Menú completo */}
           <View className="space-y-1">
-            <MenuItem icon={<Ionicons name="people-outline" size={20} />} label="Ver Usuarios" />
-            <MenuItem icon={<Ionicons name="person-add-outline" size={20} />} label="Crear Cuenta" />
-            <MenuItem icon={<Ionicons name="cart-outline" size={20} />} label="Crear Pedidos" />
-            <MenuItem icon={<Ionicons name="time-outline" size={20} />} label="Seguimiento" />
+            <MenuItem 
+              icon={<Ionicons name="people-outline" size={20} />} 
+              label="Ver Usuarios"
+              onPress={() => handleSelectMenuItem('users')}
+              active={currentScreen === 'users'}
+            />
+            <MenuItem 
+              icon={<Ionicons name="person-add-outline" size={20} />} 
+              label="Crear Cuenta"
+              onPress={() => handleSelectMenuItem('createAccount')}
+              active={currentScreen === 'createAccount'}
+            />
+            <MenuItem 
+              icon={<Ionicons name="cart-outline" size={20} />} 
+              label="Crear Pedidos"
+              onPress={() => handleSelectMenuItem('createOrders')}
+              active={currentScreen === 'createOrders'}
+            />
+            <MenuItem 
+              icon={<Ionicons name="time-outline" size={20} />} 
+              label="Seguimiento"
+              onPress={() => handleSelectMenuItem('tracking')}
+              active={currentScreen === 'tracking'}
+            />
             
             <View className="border-t border-gray-300 my-3 mx-2"></View>
             
             <Text className="text-title-color font-bold text-sm px-2 py-1">Tabla de pedidos</Text>
             
-            <MenuItem icon={<MaterialCommunityIcons name="quality-high" size={20} />} label="Control de Calidad" />
-            <MenuItem icon={<Ionicons name="pause-circle-outline" size={20} />} label="Pedidos pausa" />
-            <MenuItem icon={<MaterialCommunityIcons name="file-refresh-outline" size={20} />} label="A corrección" />
-            <MenuItem icon={<MaterialCommunityIcons name="package-variant" size={20} />} label="Empaque" />
-            <MenuItem icon={<Ionicons name="car-outline" size={20} />} label="A domicilio" />
-            <MenuItem icon={<Entypo name="shop" size={20} />} label="Para recoger" />
+            <MenuItem 
+              icon={<MaterialCommunityIcons name="quality-high" size={20} />} 
+              label="Control de Calidad"
+              onPress={() => handleSelectMenuItem('qualityControl')}
+              active={currentScreen === 'qualityControl'}
+            />
+            <MenuItem 
+              icon={<Ionicons name="pause-circle-outline" size={20} />} 
+              label="Pedidos pausa"
+              onPress={() => handleSelectMenuItem('pausedOrders')}
+              active={currentScreen === 'pausedOrders'}
+            />
+            <MenuItem 
+              icon={<MaterialCommunityIcons name="file-refresh-outline" size={20} />} 
+              label="A corrección"
+              onPress={() => handleSelectMenuItem('correction')}
+              active={currentScreen === 'correction'}
+            />
+            <MenuItem 
+              icon={<MaterialCommunityIcons name="package-variant" size={20} />} 
+              label="Empaque"
+              onPress={() => handleSelectMenuItem('packaging')}
+              active={currentScreen === 'packaging'}
+            />
+            <MenuItem 
+              icon={<Ionicons name="car-outline" size={20} />} 
+              label="A domicilio"
+              onPress={() => handleSelectMenuItem('delivery')}
+              active={currentScreen === 'delivery'}
+            />
+            <MenuItem 
+              icon={<Entypo name="shop" size={20} />} 
+              label="Para recoger"
+              onPress={() => handleSelectMenuItem('pickup')}
+              active={currentScreen === 'pickup'}
+            />
           </View>
 
           {/* Botón salir con espacio adecuado */}
-          <TouchableOpacity className="flex-row items-center bg-menu-active px-4 py-3 mt-8 rounded-md mx-1">
+          <TouchableOpacity 
+            className="flex-row items-center bg-menu-active px-4 py-3 mt-8 rounded-md mx-1"
+            onPress={logout}
+          >
             <Ionicons name="log-out-outline" size={20} color="white" />
             <Text className="text-white ml-2 font-semibold text-sm">Salir</Text>
           </TouchableOpacity>
@@ -99,13 +242,12 @@ export default function AdminScreen() {
           <TouchableOpacity onPress={toggleMenu} className="p-2">
             <Ionicons name="menu" size={24} color="#313E4B" />
           </TouchableOpacity>
-          <Text className="text-title-color text-lg font-bold">Pedidos</Text>
+          <Text className="text-title-color text-lg font-bold">{getCurrentTitle()}</Text>
           <View className="w-6"></View>
         </View>
 
-        <View className="flex-1 items-center justify-center">
-          {/* Contenido adicional puede ir aquí */}
-        </View>
+        {/* Aquí se renderiza el contenido según la opción seleccionada */}
+        {renderContent()}
       </View>
     </SafeAreaView>
   );

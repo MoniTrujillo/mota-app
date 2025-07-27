@@ -1,24 +1,26 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { TouchableOpacity, Text, View } from 'react-native';
 
-type MenuItemProps = {
+interface MenuItemProps {
   icon: React.ReactNode;
   label: string;
+  onPress?: () => void;
   active?: boolean;
-};
+}
 
-export default function MenuItem({ icon, label, active = false }: MenuItemProps) {
+const MenuItem = ({ icon, label, onPress, active = false }: MenuItemProps) => {
   return (
     <TouchableOpacity
-      className={`flex-row items-center px-3 py-2 rounded-md mx-1 ${active ? 'bg-menu-active' : ''}`}
+      onPress={onPress}
+      className={`flex-row items-center px-4 mx-1 rounded-md ${active ? 'bg-menu-active' : ''}`}
+      style={{ height: 44 }} // Setting exact 44pt height here
     >
-      <View className={`mr-3 ${active ? 'text-white' : 'text-title-color'}`}>{icon}</View>
-      <Text 
-        className={`text-sm font-medium ${active ? 'text-white' : 'text-title-color'}`}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
+      <View className="w-6 h-6 justify-center items-center">
+        {icon}
+      </View>
+      <Text className={`ml-3 ${active ? 'text-white' : 'text-title-color'} text-sm`}>{label}</Text>
     </TouchableOpacity>
   );
-}
+};
+
+export default MenuItem;
