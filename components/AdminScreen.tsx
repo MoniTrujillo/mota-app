@@ -22,6 +22,19 @@ import {
 import MenuItem from './MenuItem';
 import { useAuth } from '../contexts/AuthContext';
 
+// Importar los componentes de pantalla
+import UsersScreen from './screens/UsersScreen';
+import CreateAccountScreen from './screens/CreateAccountScreen';
+import CreateOrdersScreen from './screens/CreateOrdersScreen';
+import TrackingScreen from './screens/TrackingScreen';
+import QualityControlScreen from './screens/QualityControlScreen';
+import PausedOrdersScreen from './screens/PausedOrdersScreen';
+import CorrectionScreen from './screens/CorrectionScreen';
+import PackagingScreen from './screens/PackagingScreen';
+import DeliveryScreen from './screens/DeliveryScreen';
+import PickupScreen from './screens/PickupScreen';
+import DefaultScreen from './screens/DefaultScreen';
+
 const MENU_WIDTH = 250;
 
 // Define los tipos de pantallas disponibles
@@ -67,34 +80,27 @@ export default function AdminScreen() {
   const renderContent = () => {
     switch (currentScreen) {
       case 'users':
-        return (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-title-color text-xl font-bold">Ver Usuarios</Text>
-            <Text className="text-gray-600 mt-2">Lista de usuarios del sistema</Text>
-          </View>
-        );
+        return <UsersScreen />;
       case 'createAccount':
-        return (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-title-color text-xl font-bold">Crear Cuenta</Text>
-            <Text className="text-gray-600 mt-2">Formulario para crear nuevas cuentas</Text>
-          </View>
-        );
+        return <CreateAccountScreen />;
       case 'createOrders':
-        return (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-title-color text-xl font-bold">Crear Pedidos</Text>
-            <Text className="text-gray-600 mt-2">Formulario para crear nuevos pedidos</Text>
-          </View>
-        );
-      // Añadir más casos para cada pantalla
+        return <CreateOrdersScreen />;
+      case 'tracking':
+        return <TrackingScreen />;
+      case 'qualityControl':
+        return <QualityControlScreen />;
+      case 'pausedOrders':
+        return <PausedOrdersScreen />;
+      case 'correction':
+        return <CorrectionScreen />;
+      case 'packaging':
+        return <PackagingScreen />;
+      case 'delivery':
+        return <DeliveryScreen />;
+      case 'pickup':
+        return <PickupScreen />;
       default:
-        return (
-          <View className="flex-1 items-center justify-center">
-            <Text className="text-title-color text-xl font-bold">Selecciona una opción</Text>
-            <Text className="text-gray-600 mt-2">Utiliza el menú lateral para navegar</Text>
-          </View>
-        );
+        return <DefaultScreen />;
     }
   };
 

@@ -13,7 +13,7 @@ const MenuItem = ({ icon, label, onPress, active = false }: MenuItemProps) => {
     <TouchableOpacity
       onPress={onPress}
       className={`flex-row items-center px-4 mx-1 rounded-md ${active ? 'bg-menu-active' : ''}`}
-      style={{ height: 44 }} // Setting exact 44pt height here
+      style={{ height: 44 }}
     >
       <View className="w-6 h-6 justify-center items-center">
         {icon}
