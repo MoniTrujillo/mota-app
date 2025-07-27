@@ -102,16 +102,6 @@ export default function LoginScreen({ navigation }: { navigation?: any }) {
                 {isLoading ? 'Iniciando...' : 'Iniciar Sesión'}
               </Text>
             </TouchableOpacity>
-
-            {/* Botón Registrarse */}
-            <TouchableOpacity 
-              className="mt-4"
-              onPress={() => navigation?.navigate?.('RegisterScreen')}
-            >
-              <Text className="text-primary-color font-medium underline">
-                ¿No tienes cuenta? Regístrate
-              </Text>
-            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
