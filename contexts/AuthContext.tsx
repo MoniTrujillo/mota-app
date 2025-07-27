@@ -37,22 +37,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       
-      // Obtener todos los usuarios
-      const usuarios = await apiService.get<UserWithPassword[]>('/usuarios');
+      // Enviar solicitud de login directamente al endpoint
+      const loginData = {
+        correo,
+        contrasena: password
+      };
       
-      // Buscar el usuario que haga match con correo y contraseña
-      const foundUser = usuarios.find(
-        (usuario) => 
-          usuario.correo.toLowerCase() === correo.toLowerCase() && 
-          // Nota: En producción, la contraseña debería compararse con hash
-          // Por ahora asumo que la API devuelve la contraseña en texto plano
-          usuario.contrasena === password
-      );
-
-      if (foundUser) {
-        // Remover la contraseña del objeto usuario por seguridad
-        const { contrasena, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword);
+      // Hacer la petición POST al endpoint de login
+      const userData = await apiService.post<User>('/usuarios/login', loginData);
+      
+      if (userData) {
+        // Guardar los datos del usuario en el estado
+        setUser(userData);
         return true;
       } else {
         return false;

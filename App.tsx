@@ -15,13 +15,25 @@ import RegisterScreen from "./components/RegisterScreen";
 import HomeScreen from "./components/HomeScreen";
 import AdminScreen from "./components/AdminScreen"; 
 
+function MainApp() {
+  const { isAuthenticated, user } = useAuth();
+  
+  return (
+    <SafeAreaProvider>
+      <StatusBar style="auto" />
+      {isAuthenticated ? (
+        user?.id_area === 1 ? <AdminScreen /> : <HomeScreen />
+      ) : (
+        <LoginScreen />
+      )}
+    </SafeAreaProvider>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <AdminScreen />
-      </SafeAreaProvider>
+      <MainApp />
     </AuthProvider>
   );
 }
