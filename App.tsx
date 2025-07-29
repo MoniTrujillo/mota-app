@@ -11,9 +11,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LoginScreen from "./components/LoginScreen";
-import RegisterScreen from "./components/RegisterScreen";
 import HomeScreen from "./components/HomeScreen";
 import AdminScreen from "./components/AdminScreen"; 
+import LoadingScreen from "./components/LoadingScreen";
 
 function MainApp() {
   const { isAuthenticated, user } = useAuth();
@@ -24,7 +24,7 @@ function MainApp() {
       {isAuthenticated ? (
         user?.id_area === 1 ? <AdminScreen /> : <HomeScreen />
       ) : (
-        <LoginScreen />
+        <LoadingScreen />
       )}
     </SafeAreaProvider>
   );
