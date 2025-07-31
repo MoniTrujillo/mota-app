@@ -7,9 +7,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  StyleSheet
+  StyleSheet,
+  ScrollView,
+  Image
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, AntDesign } from '@expo/vector-icons';
 import apiService from '../../services/apiService';
 import { User } from '../../contexts/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,11 +28,21 @@ interface UserExtended extends User {
   };
 }
 
+// Define los grupos de usuarios
+type UserGroup = {
+  id: string;
+  title: string;
+  subtitle: string;
+  filter: (user: UserExtended) => boolean;
+};
+
 export default function UsersScreen() {
   const [users, setUsers] = useState<UserExtended[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [isFiltersView, setIsFiltersView] = useState(true); // true para mostrar filtros, false para mostrar lista
 
   // Función para cargar los usuarios
   const fetchUsers = async (showLoader = true) => {
@@ -62,6 +74,54 @@ export default function UsersScreen() {
     setRefreshing(true);
     await fetchUsers(false);
   };
+
+  // Definir los grupos de usuarios para filtrar
+  const userGroups: UserGroup[] = [
+    {
+      id: 'admin',
+      title: 'Usuarios A',
+      subtitle: 'Administradores',
+      filter: (user) => user.funcion?.n_funcion.toLowerCase() === 'administrador'
+    },
+    {
+      id: 'secretary',
+      title: 'Usuarios B',
+      subtitle: 'Secretarias',
+      filter: (user) => user.funcion?.n_funcion.toLowerCase() === 'secretaria'
+    },
+    {
+      id: 'doctor',
+      title: 'Usuarios C',
+      subtitle: 'Doctores',
+      filter: (user) => user.funcion?.n_funcion.toLowerCase() === 'médico' || user.funcion?.n_funcion.toLowerCase() === 'doctor'
+    },
+    {
+      id: 'worker',
+      title: 'Usuarios D',
+      subtitle: 'Trabajadores',
+      filter: (user) => user.funcion?.n_funcion.toLowerCase() === 'trabajador'
+    }
+  ];
+
+  // Función para manejar la selección de un grupo
+  const handleSelectGroup = (groupId: string) => {
+    setSelectedGroup(groupId);
+    setIsFiltersView(false);
+  };
+
+  // Función para volver a la vista de filtros
+  const handleBackToFilters = () => {
+    setSelectedGroup(null);
+    setIsFiltersView(true);
+  };
+
+  // Filtrar usuarios basados en el grupo seleccionado
+  const filteredUsers = selectedGroup 
+    ? users.filter(user => {
+        const group = userGroups.find(g => g.id === selectedGroup);
+        return group ? group.filter(user) : false;
+      }) 
+    : users;
 
   // Cargar los usuarios al montar el componente
   useEffect(() => {
@@ -128,6 +188,25 @@ export default function UsersScreen() {
     );
   };
 
+  // Renderizar la tarjeta de filtro de usuarios
+  const renderUserGroupCard = (group: UserGroup) => {
+    return (
+      <TouchableOpacity 
+        key={group.id}
+        onPress={() => handleSelectGroup(group.id)}
+        className="bg-green-100 mb-4 rounded-lg overflow-hidden"
+      >
+        <View className="px-4 py-5 flex-row items-center justify-between">
+          <View>
+            <Text className="text-title-color text-lg font-bold">{group.title}</Text>
+            <Text className="text-gray-600">{group.subtitle}</Text>
+          </View>
+          <AntDesign name="right" size={20} color="#888" />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   // Mostrar pantalla de carga mientras se obtienen los usuarios
   if (loading) {
     return <LoadingScreen message="Cargando usuarios..." />;
@@ -154,42 +233,103 @@ export default function UsersScreen() {
     );
   }
 
-  // Mostrar lista de usuarios o mensaje si no hay usuarios
+  // Si no hay usuarios, mostrar mensaje
+  if (users.length === 0) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background-color p-4">
+        <Ionicons name="people-outline" size={64} color="#888" />
+        <Text className="text-title-color text-lg font-bold mt-4">
+          No hay usuarios registrados
+        </Text>
+        <Text className="text-gray-600 mt-2 text-center">
+          Aún no se ha registrado ningún usuario en el sistema
+        </Text>
+        <TouchableOpacity 
+          className="bg-primary-color px-4 py-3 rounded-md mt-6"
+          onPress={() => fetchUsers()}
+        >
+          <Text className="text-white font-medium">Refrescar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Mostrar vista de filtros o lista de usuarios filtrados
   return (
     <View className="flex-1 bg-background-color p-4">
-      {users.length > 0 ? (
-        <FlatList
-          data={users}
-          renderItem={renderUser}
-          keyExtractor={(item) => item.id_usuario.toString()}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh}
-              colors={["#0088cc"]}
-              tintColor="#0088cc"
+      {isFiltersView ? (
+        // Vista de categorías para filtrar
+        <View className="flex-1">
+          {/* Encabezado */}
+          <View className="items-center mb-8">
+            <Image
+              source={require('../../assets/logo_mota.png')}
+              className="w-16 h-16 mb-3"
+              resizeMode="contain"
             />
-          }
-        />
+            <Text className="text-primary-color text-heading-xl font-bold mb-2">MOTA</Text>
+            <Text className="text-title-color text-heading-lg font-semibold mt-4">
+              Usuarios
+            </Text>
+          </View>
+          
+          {/* Lista de grupos */}
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {userGroups.map(renderUserGroupCard)}
+          </ScrollView>
+        </View>
       ) : (
-        <View className="flex-1 items-center justify-center">
-          <Ionicons name="people-outline" size={64} color="#888" />
-          <Text className="text-title-color text-lg font-bold mt-4">
-            No hay usuarios registrados
-          </Text>
-          <Text className="text-gray-600 mt-2 text-center">
-            Aún no se ha registrado ningún usuario en el sistema
-          </Text>
-          <TouchableOpacity 
-            className="bg-primary-color px-4 py-3 rounded-md mt-6"
-            onPress={() => fetchUsers()}
-          >
-            <Text className="text-white font-medium">Refrescar</Text>
-          </TouchableOpacity>
+        // Vista de lista de usuarios filtrados
+        <View className="flex-1">
+          {/* Encabezado con botón de regreso */}
+          <View className="flex-row items-center mb-4">
+            <TouchableOpacity 
+              onPress={handleBackToFilters}
+              className="p-2 mr-2"
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text className="text-title-color text-lg font-bold">
+              {userGroups.find(g => g.id === selectedGroup)?.title || 'Usuarios'} - {userGroups.find(g => g.id === selectedGroup)?.subtitle || ''}
+            </Text>
+          </View>
+          
+          {/* Lista de usuarios filtrados */}
+          <FlatList
+            data={filteredUsers}
+            renderItem={renderUser}
+            keyExtractor={(item) => item.id_usuario.toString()}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh}
+                colors={["#0088cc"]}
+                tintColor="#0088cc"
+              />
+            }
+            ListEmptyComponent={
+              <View className="flex-1 items-center justify-center py-12">
+                <Ionicons name="search" size={48} color="#888" />
+                <Text className="text-title-color text-lg font-bold mt-4 text-center">
+                  No hay usuarios en esta categoría
+                </Text>
+              </View>
+            }
+          />
         </View>
       )}
     </View>
   );
 }
+
+// Estilos para componentes específicos
+const styles = StyleSheet.create({
+  filterCard: {
+    backgroundColor: '#e8f5e9',
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden'
+  }
+});
