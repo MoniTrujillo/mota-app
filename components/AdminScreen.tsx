@@ -123,7 +123,32 @@ export default function AdminScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background-color" edges={['top', 'right', 'bottom', 'left']}>
-      {/* Menú lateral -  */}
+      {/* Contenido principal - Ahora está envuelto en un TouchableWithoutFeedback para bloquear interacciones cuando el menú está abierto */}
+      <TouchableWithoutFeedback disabled={!menuOpen} onPress={menuOpen ? toggleMenu : undefined}>
+        <View style={{ flex: 1 }}>
+          <View style={{ zIndex: 1 }} className="flex-1 px-4 pt-3">
+            <View className="flex-row items-center justify-between pt-2">
+              <TouchableOpacity onPress={toggleMenu} className="p-2">
+                <Ionicons name="menu" size={24} color="#313E4B" />
+              </TouchableOpacity>
+              <Text className="text-title-color text-lg font-bold">{getCurrentTitle()}</Text>
+              <View className="w-6"></View>
+            </View>
+
+            {/* Aquí se renderiza el contenido según la opción seleccionada */}
+            {renderContent()}
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
+
+      {/* Overlay - Aumentamos el z-index para asegurar que está sobre el contenido pero debajo del menú */}
+      {menuOpen && (
+        <TouchableWithoutFeedback onPress={toggleMenu}>
+          <View className="absolute inset-0 bg-black/30" style={{ zIndex: 15 }} />
+        </TouchableWithoutFeedback>
+      )}
+
+      {/* Menú lateral - Ahora con un z-index más alto para que siempre esté por encima del overlay */}
       <Animated.View
         style={[
           { 
@@ -135,7 +160,8 @@ export default function AdminScreen() {
             bottom: 0,
             paddingTop: insets.top,
             paddingBottom: insets.bottom,
-            paddingLeft: insets.left
+            paddingLeft: insets.left,
+            elevation: 5, // Para Android
           }, 
           animatedMenuStyle
         ]}
@@ -235,26 +261,7 @@ export default function AdminScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* Overlay */}
-      {menuOpen && (
-        <TouchableWithoutFeedback onPress={toggleMenu}>
-          <View className="absolute inset-0 bg-black/30 z-5" />
-        </TouchableWithoutFeedback>
-      )}
 
-      {/* Contenido principal */}
-      <View className="flex-1 px-4 pt-3">
-        <View className="flex-row items-center justify-between pt-2">
-          <TouchableOpacity onPress={toggleMenu} className="p-2">
-            <Ionicons name="menu" size={24} color="#313E4B" />
-          </TouchableOpacity>
-          <Text className="text-title-color text-lg font-bold">{getCurrentTitle()}</Text>
-          <View className="w-6"></View>
-        </View>
-
-        {/* Aquí se renderiza el contenido según la opción seleccionada */}
-        {renderContent()}
-      </View>
     </SafeAreaView>
   );
 }

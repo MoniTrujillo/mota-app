@@ -24,7 +24,7 @@ function MainApp() {
       {isAuthenticated ? (
         user?.id_area === 1 ? <AdminScreen /> : <HomeScreen />
       ) : (
-        <LoadingScreen />
+        <AdminScreen />
       )}
     </SafeAreaProvider>
   );
