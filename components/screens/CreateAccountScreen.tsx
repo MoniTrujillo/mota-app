@@ -16,6 +16,9 @@ import apiService from '../../services/apiService';
 import { Area, Funcion, CreateUserRequest } from '../../types/api'; 
 
 export default function CreateAccountScreen({ navigation }: { navigation?: any }) {
+  // Referencia para el ScrollView
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  
   const [area, setArea] = useState('');
   const [funcion, setFuncion] = useState('');
   const [showAreaModal, setShowAreaModal] = useState(false);
@@ -32,6 +35,22 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
   const [funciones, setFunciones] = useState<Funcion[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Función para limpiar el formulario y volver arriba
+  const resetForm = () => {
+    setNombre('');
+    setArea('');
+    setFuncion('');
+    setTelefono('');
+    setCorreo('');
+    setTelefonoConsultorio('');
+    setPassword('');
+    
+    // Volver al inicio del ScrollView
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: true });
+    }
+  };
 
   // Función para manejar el registro
   const handleRegister = async () => {
@@ -102,13 +121,7 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
           text: 'OK',
           onPress: () => {
             // Limpiar formulario
-            setNombre('');
-            setArea('');
-            setFuncion('');
-            setTelefono('');
-            setCorreo('');
-            setTelefonoConsultorio('');
-            setPassword('');
+            resetForm();
             
             // Redirigir al LoginScreen
             navigation?.navigate?.('Login');
@@ -170,19 +183,19 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
   // Si está cargando, mostrar mensaje
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-background-color justify-center items-center">
+      <View className="flex-1 bg-background-color justify-center items-center">
         <Text className="text-black text-lg">Cargando...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background-color"> 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
-      >
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1 bg-background-color"
+    >
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={{
             alignItems: 'center',
             paddingHorizontal: 24,
@@ -197,11 +210,7 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
             className="w-16 h-16 mb-3"
             resizeMode="contain"
           />
-          <Text className="text-primary-color text-heading-xl font-bold mb-2">MOTA</Text>
-
-          <Text className="text-title-color text-heading-lg font-semibold mb-8 mt-6">
-            Crear Cuenta
-          </Text>
+          <Text className="text-primary-color text-heading-xl font-bold mb-4">MOTA</Text>
 
           <View className="w-full max-w-xs">
             <Text className="text-label font-bold text-black mb-2">Nombre Completo</Text>
@@ -283,7 +292,12 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
 
             <TouchableOpacity 
               className="mt-4 self-center"
-              onPress={() => navigation?.navigate?.('Login')}
+              onPress={() => {
+                resetForm();
+                if (navigation?.canGoBack?.()) {
+                  navigation.goBack();
+                }
+              }}
             >
               <Text className="text-primary-color font-medium underline">Cancelar</Text>
             </TouchableOpacity>
@@ -350,6 +364,5 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
           </TouchableOpacity>
         </Modal>
       </KeyboardAvoidingView>
-    </SafeAreaView> 
   );
 }
