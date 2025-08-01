@@ -219,6 +219,8 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
               placeholder="Nombre"
               value={nombre}
               onChangeText={setNombre}
+              multiline={false}
+              style={{ fontSize: 16, height: 48, textAlignVertical: 'center' }}
             />
 
             {/* Área */}
@@ -246,6 +248,8 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
               keyboardType="phone-pad"
               value={telefono}
               onChangeText={setTelefono}
+              multiline={false}
+              style={{ fontSize: 16, height: 48, textAlignVertical: 'center' }}
             />
 
             {/* Correo */}
@@ -255,6 +259,8 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
               keyboardType="email-address"
               value={correo}
               onChangeText={setCorreo}
+              multiline={false}
+              style={{ fontSize: 16, height: 48, textAlignVertical: 'center' }}
             />
 
             {/* Teléfono Consultorio si la función es doctor o médico */}
@@ -266,6 +272,8 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
                   keyboardType="phone-pad"
                   value={telefonoConsultorio}
                   onChangeText={setTelefonoConsultorio}
+                  multiline={false}
+                  style={{ fontSize: 16, height: 48, textAlignVertical: 'center' }}
                 />
               </>
             )}
@@ -277,6 +285,8 @@ export default function CreateAccountScreen({ navigation }: { navigation?: any }
               secureTextEntry
               value={password}
               onChangeText={setPassword}
+              multiline={false}
+              style={{ fontSize: 16, height: 48, textAlignVertical: 'center' }}
             />
 
             {/* Botón */}

@@ -11,6 +11,7 @@ module.exports = {
         'background-color': '#EDEDED',  // Fondo general
         'sidebar-bg': '#CDE6E1',         // Fondo del menú lateral
         'menu-active': '#4B6273',        // Fondo item activo
+        'button-green': '#CBE2D8',    // Botones verdes
       },
       fontSize: {
         'heading-xl': '32px', // MOTA
