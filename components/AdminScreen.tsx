@@ -34,6 +34,7 @@ import PackagingScreen from './screens/PackagingScreen';
 import DeliveryScreen from './screens/DeliveryScreen';
 import PickupScreen from './screens/PickupScreen';
 import DefaultScreen from './screens/DefaultScreen';
+import AddProductScreen from './screens/AddProductScreen'; // Importar AddProductScreen
 
 const MENU_WIDTH = 250;
 
@@ -41,6 +42,7 @@ const MENU_WIDTH = 250;
 type Screen = 
   | 'users' 
   | 'createAccount'
+  | 'addProduct'
   | 'createOrders'
   | 'tracking'
   | 'qualityControl'
@@ -64,7 +66,6 @@ export default function AdminScreen() {
 
   const handleSelectMenuItem = (screen: Screen) => {
     setCurrentScreen(screen);
-    // En dispositivos pequeños, cierra el menú automáticamente después de seleccionar
     if (menuOpen) {
       toggleMenu();
     }
@@ -83,6 +84,8 @@ export default function AdminScreen() {
         return <UsersScreen />;
       case 'createAccount':
         return <CreateAccountScreen />;
+      case 'addProduct':
+        return <AddProductScreen />; // Usar AddProductScreen
       case 'createOrders':
         return <CreateOrdersScreen />;
       case 'tracking':
@@ -109,6 +112,7 @@ export default function AdminScreen() {
     switch (currentScreen) {
       case 'users': return 'Ver Usuarios';
       case 'createAccount': return 'Crear Cuenta';
+      case 'addProduct': return 'Añadir Producto';
       case 'createOrders': return 'Crear Pedidos';
       case 'tracking': return 'Seguimiento';
       case 'qualityControl': return 'Control de Calidad';
@@ -123,7 +127,6 @@ export default function AdminScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background-color" edges={['top', 'right', 'bottom', 'left']}>
-      {/* Contenido principal - Ahora está envuelto en un TouchableWithoutFeedback para bloquear interacciones cuando el menú está abierto */}
       <TouchableWithoutFeedback disabled={!menuOpen} onPress={menuOpen ? toggleMenu : undefined}>
         <View style={{ flex: 1 }}>
           <View style={{ zIndex: 1 }} className="flex-1 px-4 pt-3">
@@ -135,20 +138,17 @@ export default function AdminScreen() {
               <View className="w-6"></View>
             </View>
 
-            {/* Aquí se renderiza el contenido según la opción seleccionada */}
             {renderContent()}
           </View>
         </View>
       </TouchableWithoutFeedback>
 
-      {/* Overlay - Aumentamos el z-index para asegurar que está sobre el contenido pero debajo del menú */}
       {menuOpen && (
         <TouchableWithoutFeedback onPress={toggleMenu}>
           <View className="absolute inset-0 bg-black/30" style={{ zIndex: 15 }} />
         </TouchableWithoutFeedback>
       )}
 
-      {/* Menú lateral - Ahora con un z-index más alto para que siempre esté por encima del overlay */}
       <Animated.View
         style={[
           { 
@@ -161,7 +161,7 @@ export default function AdminScreen() {
             paddingTop: insets.top,
             paddingBottom: insets.bottom,
             paddingLeft: insets.left,
-            elevation: 5, // Para Android
+            elevation: 5,
           }, 
           animatedMenuStyle
         ]}
@@ -171,7 +171,6 @@ export default function AdminScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1 }}
         >
-          {/* Logo y título  */}
           <View className="items-center mb-8 mt-12"> 
             <Image
               source={require('../assets/logo_mota.png')}
@@ -181,7 +180,6 @@ export default function AdminScreen() {
             <Text className="text-primary-color text-heading-xl font-bold mt-2">MOTA</Text>
           </View>
 
-          {/* Menú completo */}
           <View className="space-y-1">
             <MenuItem 
               icon={<Ionicons name="people-outline" size={20} />} 
@@ -194,6 +192,12 @@ export default function AdminScreen() {
               label="Crear Cuenta"
               onPress={() => handleSelectMenuItem('createAccount')}
               active={currentScreen === 'createAccount'}
+            />
+            <MenuItem 
+              icon={<Ionicons name="add-circle-outline" size={20} />} 
+              label="Añadir Producto"
+              onPress={() => handleSelectMenuItem('addProduct')}
+              active={currentScreen === 'addProduct'}
             />
             <MenuItem 
               icon={<Ionicons name="cart-outline" size={20} />} 
@@ -250,7 +254,6 @@ export default function AdminScreen() {
             />
           </View>
 
-          {/* Botón salir con espacio adecuado */}
           <TouchableOpacity 
             className="flex-row items-center bg-menu-active px-4 py-3 mt-8 rounded-md mx-1"
             onPress={logout}
@@ -260,8 +263,6 @@ export default function AdminScreen() {
           </TouchableOpacity>
         </ScrollView>
       </Animated.View>
-
-
     </SafeAreaView>
   );
 }

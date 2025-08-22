@@ -24,14 +24,14 @@ export default function CreateOrdersScreen() {
   const [disenador, setDisenador] = useState('');
   const [fresadora, setFresadora] = useState('');
 
-  // Productos dinámicos
+  // Productos dinámicos - ahora con precio unitario
   const [productos, setProductos] = useState([
-    { nombre: '', cantidad: '', detalles: '' }
+    { nombre: '', cantidad: '', precioUnitario: '', detalles: '' }
   ]);
 
   // Añadir otro producto
   const handleAddProducto = () => {
-    setProductos([...productos, { nombre: '', cantidad: '', detalles: '' }]);
+    setProductos([...productos, { nombre: '', cantidad: '', precioUnitario: '', detalles: '' }]);
   };
 
   // Eliminar producto
@@ -39,15 +39,62 @@ export default function CreateOrdersScreen() {
     setProductos(productos.filter((_, i) => i !== idx));
   };
 
+  // Formatear precio a dos decimales
+  const formatPrecio = (value: string): string => {
+    if (!value) return '';
+    
+    // Eliminar cualquier carácter que no sea número o punto
+    let numericValue = value.replace(/[^0-9.]/g, '');
+    
+    // Asegurar que solo haya un punto decimal
+    const parts = numericValue.split('.');
+    if (parts.length > 2) {
+      numericValue = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Si es un número válido, formatear a dos decimales
+    if (!isNaN(parseFloat(numericValue))) {
+      return parseFloat(numericValue).toFixed(2);
+    }
+    
+    return numericValue;
+  };
+
   // Actualizar campo de producto
   const handleChangeProducto = (
     idx: number,
-    field: 'nombre' | 'cantidad' | 'detalles',
+    field: 'nombre' | 'cantidad' | 'precioUnitario' | 'detalles',
     value: string
   ) => {
     const nuevos = [...productos];
-    nuevos[idx][field] = value;
+    
+    if (field === 'precioUnitario') {
+      // Permitir edición libre mientras escribe
+      nuevos[idx][field] = value;
+    } else {
+      nuevos[idx][field] = value;
+    }
+    
     setProductos(nuevos);
+  };
+
+  // Manejar blur en campo de precio (cuando sale del campo)
+  const handlePrecioBlur = (idx: number) => {
+    const nuevos = [...productos];
+    const precioFormateado = formatPrecio(nuevos[idx].precioUnitario);
+    nuevos[idx].precioUnitario = precioFormateado;
+    setProductos(nuevos);
+  };
+
+  // Calcular el total
+  const calcularTotal = () => {
+    let total = 0;
+    productos.forEach(producto => {
+      const precio = parseFloat(producto.precioUnitario) || 0;
+      const cantidad = parseFloat(producto.cantidad) || 0;
+      total += precio * cantidad;
+    });
+    return total.toFixed(2);
   };
 
   // Registrar pedido (dummy)
@@ -163,63 +210,74 @@ export default function CreateOrdersScreen() {
 
             {/* Asignar Dado */}
             <Text className="text-title-color font-bold text-label mb-2">Asignar Dado</Text>
-            <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center">
+            <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12">
               <Text className="text-black flex-1">{dado}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
             </TouchableOpacity>
 
             {/* Asignar Diseñador */}
             <Text className="text-title-color font-bold text-label mb-2">Asignar Diseñador</Text>
-            <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center">
+            <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12">
               <Text className="text-black flex-1">{disenador}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
             </TouchableOpacity>
 
             {/* Fresadora */}
             <Text className="text-title-color font-bold text-label mb-2">Fresadora</Text>
-            <TextInput
-              className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-12"
-              value={fresadora}
-              onChangeText={setFresadora}
-              placeholder=""
-              multiline={false}
-              style={{ fontSize: 16 }}
-            />
+            <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12">
+              <Text className="text-black flex-1">{fresadora}</Text>
+              <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
+            </TouchableOpacity>
 
             {/* Productos dinámicos */}
             {productos.map((producto, idx) => (
               <View key={idx} className="mb-2">
-                <Text className="text-title-color font-bold text-label mb-2">
-                  {idx === 0 ? 'Producto' : `Producto ${idx + 1}`}
-                </Text>
-                <View className="flex-row items-center">
+                {/* Título del producto con botón Borrar al lado */}
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-title-color font-bold text-label">
+                    {idx === 0 ? 'Producto' : `Producto ${idx + 1}`}
+                  </Text>
+                  {idx > 0 && (
+                    <TouchableOpacity
+                      className="bg-input-color px-3 py-1 rounded shadow"
+                      onPress={() => handleRemoveProducto(idx)}
+                    >
+                      <Text className="text-title-color text-xs font-bold">Borrar</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                
+                {/* Selector de Producto (estilo combobox) */}
+                <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-2 flex-row items-center h-12">
+                  <Text className="text-black flex-1">{producto.nombre}</Text>
+                  <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
+                </TouchableOpacity>
+
+                {/* Precio Unitario */}
+                <Text className="text-title-color font-bold text-label mb-2">Precio Unitario</Text>
+                <View className="flex-row items-center bg-input-color rounded-md mb-2 h-12 px-4">
+                  <Text className="text-black mr-1">$</Text>
                   <TextInput
-                    className="bg-input-color rounded-md px-4 py-3 text-black text-base flex-1 mb-2 h-12"
-                    value={producto.nombre}
-                    onChangeText={v => handleChangeProducto(idx, 'nombre', v)}
-                    placeholder=""
+                    className="flex-1 text-black text-base h-12"
+                    value={producto.precioUnitario}
+                    onChangeText={v => handleChangeProducto(idx, 'precioUnitario', v)}
+                    onBlur={() => handlePrecioBlur(idx)}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
                     multiline={false}
                     style={{ fontSize: 16 }}
                   />
-                  {idx > 0 && (
-                    <TouchableOpacity
-                      className="ml-2 bg-input-color px-2 py-1 rounded shadow"
-                      onPress={() => handleRemoveProducto(idx)}
-                    >
-                      <Text className="text-title-color text-xs">Borrar</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
 
                 <Text className="text-title-color font-bold text-label mb-2">Cantidad</Text>
                 <TextInput
                   className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-2 h-12"
-                  value={producto.cantidad}
-                  onChangeText={v => handleChangeProducto(idx, 'cantidad', v)}
-                  keyboardType="numeric"
-                  placeholder=""
-                  multiline={false}
-                  style={{ fontSize: 16 }}
+                    value={producto.cantidad}
+                    onChangeText={v => handleChangeProducto(idx, 'cantidad', v)}
+                    keyboardType="numeric"
+                    placeholder=""
+                    multiline={false}
+                    style={{ fontSize: 16 }}
                 />
 
                 <Text className="text-title-color font-bold text-label mb-2">Detalles del producto</Text>
@@ -233,6 +291,15 @@ export default function CreateOrdersScreen() {
                 />
               </View>
             ))}
+
+            {/* Total */}
+            <View className="border-t border-title-color pt-4 mb-4">
+              <Text className="text-title-color font-bold text-label mb-2">Total</Text>
+              <View className="flex-row items-center">
+                <Text className="text-black mr-1">$</Text>
+                <Text className="text-black text-base">{calcularTotal()}</Text>
+              </View>
+            </View>
 
             {/* Botón Añadir Otro */}
             <TouchableOpacity
