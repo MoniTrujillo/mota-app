@@ -14,8 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import apiService from '../../services/apiService';
-import { EstatusPago, Product, Prioridad } from '../../types/api';
-import { User as AuthUser } from '../../contexts/AuthContext';
+import { EstatusPago, Product, Prioridad, Funcion } from '../../types/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function CreateOrdersScreen() {
@@ -34,11 +33,18 @@ export default function CreateOrdersScreen() {
   const [direccion, setDireccion] = useState('');
   const [estatusPagoList, setEstatusPagoList] = useState<EstatusPago[]>([]);
   const [showEstatusPagoModal, setShowEstatusPagoModal] = useState(false);
-  type UserExtended = AuthUser & {
+  type UsuarioBasic = {
+    id_usuario: number;
+    nombre_completo: string;
+    telefono?: string;
+    telefono_consultorio?: string;
+    correo?: string;
     area?: { n_area: string; id_area: number };
     funcion?: { n_funcion: string; id_funcion: number };
   };
-  const [users, setUsers] = useState<UserExtended[]>([]);
+  const [funcionesList, setFuncionesList] = useState<Funcion[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UsuarioBasic[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [showUserSelectModal, setShowUserSelectModal] = useState(false);
   const [currentAssignKey, setCurrentAssignKey] = useState<null | 'cliente' | 'medico' | 'dado' | 'disenador' | 'fresadora'>(null);
   const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
@@ -205,17 +211,17 @@ export default function CreateOrdersScreen() {
     fetchProducts();
   }, []);
 
-  // Cargar usuarios para selección
+  // Cargar lista de funciones para mapear claves -> id_funcion
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchFunciones = async () => {
       try {
-        const data = await apiService.get<UserExtended[]>('/usuarios');
-        if (Array.isArray(data)) setUsers(data);
+        const data = await apiService.get<Funcion[]>('/funciones');
+        if (Array.isArray(data)) setFuncionesList(data);
       } catch (err) {
-        console.error('Error al cargar usuarios', err);
+        console.error('Error al cargar funciones', err);
       }
     };
-    fetchUsers();
+    fetchFunciones();
   }, []);
 
   // Prefijar teléfono con +52 si está vacío al iniciar
@@ -238,12 +244,12 @@ export default function CreateOrdersScreen() {
     fetchPrioridades();
   }, []);
 
-  // Autocompletar correo del cliente al seleccionar un cliente por ID
+  // Autocompletar correo/teléfono del cliente al seleccionar un cliente por ID
   useEffect(() => {
     const fetchClienteCorreo = async () => {
       try {
         if (selectedClienteId != null) {
-          const data = await apiService.get<UserExtended>(`/usuarios/${selectedClienteId}`);
+          const data = await apiService.get<UsuarioBasic>(`/usuarios/${selectedClienteId}`);
           if (data && typeof data.correo === 'string') {
             setCorreoCliente(data.correo || '');
           }
@@ -257,6 +263,49 @@ export default function CreateOrdersScreen() {
     };
     fetchClienteCorreo();
   }, [selectedClienteId]);
+
+  // Helpers para filtrar usuarios por función al abrir modal
+  const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const funcionNameByKey: Record<NonNullable<typeof currentAssignKey>, string> = {
+    cliente: 'cliente',
+    medico: 'medico',
+    dado: 'dado',
+    disenador: 'disenador',
+    fresadora: 'fresadora',
+  };
+  const funcionFallbackId: Partial<Record<NonNullable<typeof currentAssignKey>, number>> = {
+    medico: 1,
+    disenador: 3,
+    fresadora: 4,
+    dado: 5,
+    cliente: 6,
+  };
+
+  const getFuncionIdForKey = (key: NonNullable<typeof currentAssignKey>): number | undefined => {
+    const target = funcionNameByKey[key];
+    const found = funcionesList.find((f) => normalize(f.n_funcion) === target);
+    return found?.id_funcion ?? funcionFallbackId[key];
+  };
+
+  const openUserSelector = async (key: NonNullable<typeof currentAssignKey>) => {
+    setCurrentAssignKey(key);
+    setShowUserSelectModal(true);
+    setLoadingUsers(true);
+    try {
+      const id = getFuncionIdForKey(key);
+      if (id != null) {
+        const data = await apiService.get<UsuarioBasic[]>(`/usuarios/por-funcion/${id}`);
+        setFilteredUsers(Array.isArray(data) ? data : []);
+      } else {
+        setFilteredUsers([]);
+      }
+    } catch (err) {
+      console.error('Error al cargar usuarios por función', err);
+      setFilteredUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background-color">
@@ -288,7 +337,7 @@ export default function CreateOrdersScreen() {
             <Text className="text-title-color font-bold text-label mb-2">Cliente</Text>
             <TouchableOpacity
               className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
-              onPress={() => { setCurrentAssignKey('cliente'); setShowUserSelectModal(true); }}
+              onPress={() => { openUserSelector('cliente'); }}
             >
               <Text className={`flex-1 ${cliente ? 'text-black' : 'text-gray-500'}`}>{cliente || 'Seleccionar'}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
@@ -333,7 +382,7 @@ export default function CreateOrdersScreen() {
             <Text className="text-title-color font-bold text-label mb-2">Nombre del médico</Text>
             <TouchableOpacity
               className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
-              onPress={() => { setCurrentAssignKey('medico'); setShowUserSelectModal(true); }}
+              onPress={() => { openUserSelector('medico'); }}
             >
               <Text className={`flex-1 ${solicitante ? 'text-black' : 'text-gray-500'}`}>{solicitante || 'Seleccionar'}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
@@ -380,7 +429,7 @@ export default function CreateOrdersScreen() {
             <Text className="text-title-color font-bold text-label mb-2">Asignar Dado</Text>
             <TouchableOpacity
               className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
-              onPress={() => { setCurrentAssignKey('dado'); setShowUserSelectModal(true); }}
+              onPress={() => { openUserSelector('dado'); }}
             >
               <Text className={`flex-1 ${dado ? 'text-black' : 'text-gray-500'}`}>{dado || 'Seleccionar'}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
@@ -390,7 +439,7 @@ export default function CreateOrdersScreen() {
             <Text className="text-title-color font-bold text-label mb-2">Asignar Diseñador</Text>
             <TouchableOpacity
               className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
-              onPress={() => { setCurrentAssignKey('disenador'); setShowUserSelectModal(true); }}
+              onPress={() => { openUserSelector('disenador'); }}
             >
               <Text className={`flex-1 ${disenador ? 'text-black' : 'text-gray-500'}`}>{disenador || 'Seleccionar'}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
@@ -400,7 +449,7 @@ export default function CreateOrdersScreen() {
             <Text className="text-title-color font-bold text-label mb-2">Fresadora</Text>
             <TouchableOpacity
               className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
-              onPress={() => { setCurrentAssignKey('fresadora'); setShowUserSelectModal(true); }}
+              onPress={() => { openUserSelector('fresadora'); }}
             >
               <Text className={`flex-1 ${fresadora ? 'text-black' : 'text-gray-500'}`}>{fresadora || 'Seleccionar'}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
@@ -684,6 +733,8 @@ export default function CreateOrdersScreen() {
             <SafeAreaView edges={['bottom']} className="bg-white rounded-t-2xl p-4">
               <View className="flex-row items-center justify-between mb-2">
                 <Text className="text-title-color text-lg font-bold">
+                  {currentAssignKey === 'cliente' && 'Seleccionar Cliente'}
+                  {currentAssignKey === 'medico' && 'Seleccionar Médico'}
                   {currentAssignKey === 'dado' && 'Asignar Dado'}
                   {currentAssignKey === 'disenador' && 'Asignar Diseñador'}
                   {currentAssignKey === 'fresadora' && 'Asignar Fresadora'}
@@ -694,7 +745,12 @@ export default function CreateOrdersScreen() {
               </View>
 
               <ScrollView>
-                {users.map((u) => (
+                {loadingUsers && (
+                  <View className="py-6 items-center">
+                    <Text className="text-gray-500">Cargando...</Text>
+                  </View>
+                )}
+                {!loadingUsers && filteredUsers.map((u) => (
                   <TouchableOpacity
                     key={u.id_usuario}
                     className="py-3 border-b border-gray-200"
@@ -712,7 +768,7 @@ export default function CreateOrdersScreen() {
                     </View>
                   </TouchableOpacity>
                 ))}
-                {users.length === 0 && (
+                {!loadingUsers && filteredUsers.length === 0 && (
                   <View className="py-6 items-center">
                     <Text className="text-gray-500">No hay usuarios disponibles</Text>
                   </View>
