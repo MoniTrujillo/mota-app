@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,15 @@ import {
   Image,
   Platform,
   KeyboardAvoidingView,
+  Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import apiService from '../../services/apiService';
+import { EstatusPago, Product, Prioridad } from '../../types/api';
+import { User as AuthUser } from '../../contexts/AuthContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function CreateOrdersScreen() {
   const [cliente, setCliente] = useState('');
@@ -19,19 +25,65 @@ export default function CreateOrdersScreen() {
   const [solicitante, setSolicitante] = useState('');
   const [fechaEntrega, setFechaEntrega] = useState('');
   const [prioridad, setPrioridad] = useState('');
+  const [prioridadesList, setPrioridadesList] = useState<Prioridad[]>([]);
+  const [showPrioridadModal, setShowPrioridadModal] = useState(false);
   const [estatusPago, setEstatusPago] = useState('');
   const [dado, setDado] = useState('');
   const [disenador, setDisenador] = useState('');
   const [fresadora, setFresadora] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [estatusPagoList, setEstatusPagoList] = useState<EstatusPago[]>([]);
+  const [showEstatusPagoModal, setShowEstatusPagoModal] = useState(false);
+  type UserExtended = AuthUser & {
+    area?: { n_area: string; id_area: number };
+    funcion?: { n_funcion: string; id_funcion: number };
+  };
+  const [users, setUsers] = useState<UserExtended[]>([]);
+  const [showUserSelectModal, setShowUserSelectModal] = useState(false);
+  const [currentAssignKey, setCurrentAssignKey] = useState<null | 'cliente' | 'medico' | 'dado' | 'disenador' | 'fresadora'>(null);
+  const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
+  const [selectedDadoId, setSelectedDadoId] = useState<number | null>(null);
+  const [selectedDisenadorId, setSelectedDisenadorId] = useState<number | null>(null);
+  const [selectedFresadoraId, setSelectedFresadoraId] = useState<number | null>(null);
+  const [selectedEstatusPagoId, setSelectedEstatusPagoId] = useState<number | null>(null);
+  const [selectedPrioridadId, setSelectedPrioridadId] = useState<number | null>(null);
 
   // Productos dinámicos - ahora con precio unitario
   const [productos, setProductos] = useState([
-    { nombre: '', cantidad: '', precioUnitario: '', detalles: '' }
+  { idProducto: null as number | null, nombre: '', cantidad: '', precioUnitario: '', detalles: '' }
   ]);
+  const [productsList, setProductsList] = useState<Product[]>([]);
+  const [showProductSelectModal, setShowProductSelectModal] = useState(false);
+  const [currentProductIndex, setCurrentProductIndex] = useState<number | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date>(new Date());
+
+  const formatDate = (d: Date) => {
+    const pad = (n: number) => `${n}`.padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  // Formatear teléfono a formato MX: +52 AA BBBB CCCC
+  const formatTelefonoMX = (input: string): string => {
+    // Quitar todo lo que no sea dígito y quitar cualquier 52 inicial para normalizar a 10
+    let num = (input || '').replace(/\D/g, '');
+    if (num.startsWith('52')) num = num.slice(2);
+    if (num.length > 10) num = num.slice(0, 10);
+    const a = num.slice(0, 2);
+    const b = num.slice(2, 6);
+    const c = num.slice(6, 10);
+    const parts: string[] = [];
+    if (a) parts.push(a);
+    if (b) parts.push(b);
+    if (c) parts.push(c);
+    const body = parts.join(' ').trim();
+    // Siempre mostrar +52 y un espacio; si no hay dígitos, devolver "+52 "
+    return `+52 ${body}`.trimEnd() + (body ? '' : '');
+  };
 
   // Añadir otro producto
   const handleAddProducto = () => {
-    setProductos([...productos, { nombre: '', cantidad: '', precioUnitario: '', detalles: '' }]);
+  setProductos([...productos, { idProducto: null, nombre: '', cantidad: '', precioUnitario: '', detalles: '' }]);
   };
 
   // Eliminar producto
@@ -97,10 +149,114 @@ export default function CreateOrdersScreen() {
     return total.toFixed(2);
   };
 
-  // Registrar pedido (dummy)
-  const handleRegistrar = () => {
-    // Aquí iría la lógica de registro
+  // Registrar pedido
+  const handleRegistrar = async () => {
+    // Armar JSON con la estructura solicitada
+    const order = {
+      id_cliente: selectedClienteId,
+      fecha_entrega: fechaEntrega || null,
+      id_prioridad: selectedPrioridadId,
+      id_estatuspago: selectedEstatusPagoId,
+      id_disenador: selectedDisenadorId,
+      id_fresadora: selectedFresadoraId,
+      id_dado: selectedDadoId,
+      id_estatusp: 1, // Valor por defecto; ajustar si existe otro estatus en el flujo
+      direccion: direccion || '',
+      productos: productos
+        .filter((p) => p.idProducto)
+        .map((p) => ({
+          id_producto: p.idProducto as number,
+          cantidad: Number(p.cantidad) || 0,
+          precio_unitario: parseFloat(p.precioUnitario) || 0,
+        })),
+    };
+
+    try {
+      await apiService.post('/pedidos', order);
+      Alert.alert('Éxito', 'Pedido registrado correctamente');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'No se pudo registrar el pedido');
+    }
   };
+
+  // Cargar estatus de pago al montar
+  useEffect(() => {
+    const fetchEstatusPago = async () => {
+      try {
+        const data = await apiService.get<EstatusPago[]>('/estatus-pago');
+        if (Array.isArray(data)) setEstatusPagoList(data);
+      } catch (err) {
+        console.error('Error al cargar estatus de pago', err);
+      }
+    };
+    fetchEstatusPago();
+  }, []);
+
+  // Cargar productos
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const data = await apiService.get<Product[]>('/productos');
+        if (Array.isArray(data)) setProductsList(data);
+      } catch (err) {
+        console.error('Error al cargar productos', err);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // Cargar usuarios para selección
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await apiService.get<UserExtended[]>('/usuarios');
+        if (Array.isArray(data)) setUsers(data);
+      } catch (err) {
+        console.error('Error al cargar usuarios', err);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  // Prefijar teléfono con +52 si está vacío al iniciar
+  useEffect(() => {
+    if (!telefonoCliente) {
+      setTelefonoCliente('+52 ');
+    }
+  }, []);
+
+  // Cargar prioridades
+  useEffect(() => {
+    const fetchPrioridades = async () => {
+      try {
+        const data = await apiService.get<Prioridad[]>('/prioridad');
+        if (Array.isArray(data)) setPrioridadesList(data);
+      } catch (err) {
+        console.error('Error al cargar prioridades', err);
+      }
+    };
+    fetchPrioridades();
+  }, []);
+
+  // Autocompletar correo del cliente al seleccionar un cliente por ID
+  useEffect(() => {
+    const fetchClienteCorreo = async () => {
+      try {
+        if (selectedClienteId != null) {
+          const data = await apiService.get<UserExtended>(`/usuarios/${selectedClienteId}`);
+          if (data && typeof data.correo === 'string') {
+            setCorreoCliente(data.correo || '');
+          }
+          if (data) {
+            setTelefonoCliente(formatTelefonoMX((data as any).telefono || (data as any).telefono_consultorio || ''));
+          }
+        }
+      } catch (err) {
+        console.error('Error al obtener correo del cliente', err);
+      }
+    };
+    fetchClienteCorreo();
+  }, [selectedClienteId]);
 
   return (
     <SafeAreaView className="flex-1 bg-background-color">
@@ -130,14 +286,13 @@ export default function CreateOrdersScreen() {
           <View className="w-full max-w-xs">
             {/* Cliente */}
             <Text className="text-title-color font-bold text-label mb-2">Cliente</Text>
-            <TextInput
-              className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-12"
-              value={cliente}
-              onChangeText={setCliente}
-              placeholder=""
-              multiline={false}
-              style={{ fontSize: 16 }}
-            />
+            <TouchableOpacity
+              className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
+              onPress={() => { setCurrentAssignKey('cliente'); setShowUserSelectModal(true); }}
+            >
+              <Text className={`flex-1 ${cliente ? 'text-black' : 'text-gray-500'}`}>{cliente || 'Seleccionar'}</Text>
+              <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
+            </TouchableOpacity>
 
             {/* Teléfono del cliente */}
             <Text className="text-title-color font-bold text-label mb-2">Telefono del cliente</Text>
@@ -145,7 +300,7 @@ export default function CreateOrdersScreen() {
               className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-12"
               keyboardType="phone-pad"
               value={telefonoCliente}
-              onChangeText={setTelefonoCliente}
+              onChangeText={(v) => setTelefonoCliente(formatTelefonoMX(v))}
               placeholder=""
               multiline={false}
               style={{ fontSize: 16 }}
@@ -163,69 +318,91 @@ export default function CreateOrdersScreen() {
               style={{ fontSize: 16 }}
             />
 
-            {/* Nombre del solicitante */}
-            <Text className="text-title-color font-bold text-label mb-2">Nombre del solicitante</Text>
+            {/* Dirección */}
+            <Text className="text-title-color font-bold text-label mb-2">Dirección</Text>
             <TextInput
               className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-12"
-              value={solicitante}
-              onChangeText={setSolicitante}
+              value={direccion}
+              onChangeText={setDireccion}
               placeholder=""
               multiline={false}
               style={{ fontSize: 16 }}
             />
+
+            {/* Nombre del médico */}
+            <Text className="text-title-color font-bold text-label mb-2">Nombre del médico</Text>
+            <TouchableOpacity
+              className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
+              onPress={() => { setCurrentAssignKey('medico'); setShowUserSelectModal(true); }}
+            >
+              <Text className={`flex-1 ${solicitante ? 'text-black' : 'text-gray-500'}`}>{solicitante || 'Seleccionar'}</Text>
+              <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
+            </TouchableOpacity>
 
             {/* Fecha de entrega */}
             <Text className="text-title-color font-bold text-label mb-2">Fecha de entrega</Text>
-            <View className="flex-row items-center bg-input-color rounded-md mb-4 px-4">
-              <TextInput
-                className="flex-1 py-3 text-black text-base"
-                value={fechaEntrega}
-                onChangeText={setFechaEntrega}
-                placeholder=""
-              />
+            <TouchableOpacity
+              className="flex-row items-center bg-input-color rounded-md mb-4 px-4 h-12"
+              onPress={() => {
+                // Inicializar tempDate con fecha actual o la existente si es parseable
+                const parsed = fechaEntrega ? new Date(fechaEntrega) : new Date();
+                setTempDate(isNaN(parsed.getTime()) ? new Date() : parsed);
+                setShowDatePicker(true);
+              }}
+            >
+              <Text className={`flex-1 ${fechaEntrega ? 'text-black' : 'text-gray-500'}`}>
+                {fechaEntrega || 'Seleccionar'}
+              </Text>
               <Ionicons name="calendar-outline" size={20} color="#313E4B" />
-            </View>
+            </TouchableOpacity>
 
             {/* Prioridad */}
             <Text className="text-title-color font-bold text-label mb-2">Prioridad</Text>
-            <TextInput
-              className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-12"
-              value={prioridad}
-              onChangeText={setPrioridad}
-              placeholder=""
-              multiline={false}
-              style={{ fontSize: 16 }}
-            />
+            <TouchableOpacity
+              className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
+              onPress={() => setShowPrioridadModal(true)}
+            >
+              <Text className={`flex-1 ${prioridad ? 'text-black' : 'text-gray-500'}`}>{prioridad || 'Seleccionar'}</Text>
+              <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
+            </TouchableOpacity>
 
             {/* Estatus del pago */}
             <Text className="text-title-color font-bold text-label mb-2">Estatus del pago</Text>
-            <TextInput
-              className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-12"
-              value={estatusPago}
-              onChangeText={setEstatusPago}
-              placeholder=""
-              multiline={false}
-              style={{ fontSize: 16 }}
-            />
+            <TouchableOpacity
+              className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
+              onPress={() => setShowEstatusPagoModal(true)}
+            >
+              <Text className={`flex-1 ${estatusPago ? 'text-black' : 'text-gray-500'}`}>{estatusPago || 'Seleccionar'}</Text>
+              <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
+            </TouchableOpacity>
 
             {/* Asignar Dado */}
             <Text className="text-title-color font-bold text-label mb-2">Asignar Dado</Text>
-            <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12">
-              <Text className="text-black flex-1">{dado}</Text>
+            <TouchableOpacity
+              className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
+              onPress={() => { setCurrentAssignKey('dado'); setShowUserSelectModal(true); }}
+            >
+              <Text className={`flex-1 ${dado ? 'text-black' : 'text-gray-500'}`}>{dado || 'Seleccionar'}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
             </TouchableOpacity>
 
             {/* Asignar Diseñador */}
             <Text className="text-title-color font-bold text-label mb-2">Asignar Diseñador</Text>
-            <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12">
-              <Text className="text-black flex-1">{disenador}</Text>
+            <TouchableOpacity
+              className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
+              onPress={() => { setCurrentAssignKey('disenador'); setShowUserSelectModal(true); }}
+            >
+              <Text className={`flex-1 ${disenador ? 'text-black' : 'text-gray-500'}`}>{disenador || 'Seleccionar'}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
             </TouchableOpacity>
 
             {/* Fresadora */}
             <Text className="text-title-color font-bold text-label mb-2">Fresadora</Text>
-            <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12">
-              <Text className="text-black flex-1">{fresadora}</Text>
+            <TouchableOpacity
+              className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
+              onPress={() => { setCurrentAssignKey('fresadora'); setShowUserSelectModal(true); }}
+            >
+              <Text className={`flex-1 ${fresadora ? 'text-black' : 'text-gray-500'}`}>{fresadora || 'Seleccionar'}</Text>
               <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
             </TouchableOpacity>
 
@@ -248,8 +425,11 @@ export default function CreateOrdersScreen() {
                 </View>
                 
                 {/* Selector de Producto (estilo combobox) */}
-                <TouchableOpacity className="bg-input-color rounded-md px-4 py-3 mb-2 flex-row items-center h-12">
-                  <Text className="text-black flex-1">{producto.nombre}</Text>
+                <TouchableOpacity
+                  className="bg-input-color rounded-md px-4 py-3 mb-2 flex-row items-center h-12"
+                  onPress={() => { setCurrentProductIndex(idx); setShowProductSelectModal(true); }}
+                >
+                  <Text className={`flex-1 ${producto.nombre ? 'text-black' : 'text-gray-500'}`}>{producto.nombre || 'Seleccionar'}</Text>
                   <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
                 </TouchableOpacity>
 
@@ -318,6 +498,229 @@ export default function CreateOrdersScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
+
+        {/* Modal: Selección de Estatus de Pago */}
+        <Modal
+          visible={showEstatusPagoModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowEstatusPagoModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <SafeAreaView edges={['bottom']} className="bg-white rounded-t-2xl p-4 pb-8">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-title-color text-lg font-bold">Estatus del pago</Text>
+                <TouchableOpacity onPress={() => setShowEstatusPagoModal(false)}>
+                  <Ionicons name="close" size={24} color="#313E4B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView>
+                {estatusPagoList.map((item) => (
+                  <TouchableOpacity
+                    key={item.id_estatuspago}
+                    className="py-3 border-b border-gray-200 flex-row items-center"
+                    onPress={() => {
+                      setEstatusPago(item.n_estatuspago);
+                      setSelectedEstatusPagoId(item.id_estatuspago);
+                      setShowEstatusPagoModal(false);
+                    }}
+                  >
+                    <Text className="text-black flex-1">{item.n_estatuspago}</Text>
+                    {estatusPago === item.n_estatuspago && (
+                      <Ionicons name="checkmark" size={20} color="#0088cc" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+                {estatusPagoList.length === 0 && (
+                  <View className="py-6 items-center">
+                    <Text className="text-gray-500">No hay estatus disponibles</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </SafeAreaView>
+          </View>
+        </Modal>
+
+        {/* Modal: Fecha de entrega */}
+        <Modal
+          visible={showDatePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <SafeAreaView edges={['bottom']} className="bg-white rounded-t-2xl p-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-title-color text-lg font-bold">Seleccionar fecha</Text>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Ionicons name="close" size={24} color="#313E4B" />
+                </TouchableOpacity>
+              </View>
+
+              <View className="mb-4">
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                  onChange={(event, date) => {
+                    if (date) setTempDate(date);
+                  }}
+                />
+              </View>
+
+              <View className="flex-row justify-end space-x-4 mb-2">
+                <TouchableOpacity className="px-4 py-2 mr-2" onPress={() => setShowDatePicker(false)}>
+                  <Text className="text-gray-600">Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="bg-primary-color px-4 py-2 rounded-md"
+                  onPress={() => {
+                    setFechaEntrega(formatDate(tempDate));
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <Text className="text-white font-medium">Listo</Text>
+                </TouchableOpacity>
+              </View>
+            </SafeAreaView>
+          </View>
+        </Modal>
+
+        {/* Modal: Selección de Prioridad */}
+        <Modal
+          visible={showPrioridadModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPrioridadModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <SafeAreaView edges={['bottom']} className="bg-white rounded-t-2xl p-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-title-color text-lg font-bold">Prioridad</Text>
+                <TouchableOpacity onPress={() => setShowPrioridadModal(false)}>
+                  <Ionicons name="close" size={24} color="#313E4B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView>
+                {prioridadesList.map((p) => (
+                  <TouchableOpacity
+                    key={p.id_prioridad}
+                    className="py-3 border-b border-gray-200 flex-row items-center"
+                    onPress={() => {
+                      setPrioridad(p.n_prioridad);
+                      setSelectedPrioridadId(p.id_prioridad);
+                      setShowPrioridadModal(false);
+                    }}
+                  >
+                    <Text className="text-black flex-1">{p.n_prioridad}</Text>
+                    {prioridad === p.n_prioridad && (
+                      <Ionicons name="checkmark" size={20} color="#0088cc" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+                {prioridadesList.length === 0 && (
+                  <View className="py-6 items-center">
+                    <Text className="text-gray-500">No hay prioridades disponibles</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </SafeAreaView>
+          </View>
+        </Modal>
+
+        {/* Modal: Selección de Producto */}
+        <Modal
+          visible={showProductSelectModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowProductSelectModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <SafeAreaView edges={['bottom']} className="bg-white rounded-t-2xl p-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-title-color text-lg font-bold">Seleccionar producto</Text>
+                <TouchableOpacity onPress={() => setShowProductSelectModal(false)}>
+                  <Ionicons name="close" size={24} color="#313E4B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView>
+                {productsList.map((p) => (
+                  <TouchableOpacity
+                    key={p.id_producto}
+                    className="py-3 border-b border-gray-200"
+                    onPress={() => {
+                      if (currentProductIndex !== null) {
+                        const nuevos = [...productos];
+                        nuevos[currentProductIndex].nombre = p.n_producto;
+                        (nuevos[currentProductIndex] as any).idProducto = p.id_producto;
+                        setProductos(nuevos);
+                      }
+                      setShowProductSelectModal(false);
+                    }}
+                  >
+                    <Text className="text-black">{p.n_producto}</Text>
+                  </TouchableOpacity>
+                ))}
+                {productsList.length === 0 && (
+                  <View className="py-6 items-center">
+                    <Text className="text-gray-500">No hay productos disponibles</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </SafeAreaView>
+          </View>
+        </Modal>
+        {/* Modal: Selección de Usuario (Dado/Diseñador/Fresadora) */}
+        <Modal
+          visible={showUserSelectModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowUserSelectModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <SafeAreaView edges={['bottom']} className="bg-white rounded-t-2xl p-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-title-color text-lg font-bold">
+                  {currentAssignKey === 'dado' && 'Asignar Dado'}
+                  {currentAssignKey === 'disenador' && 'Asignar Diseñador'}
+                  {currentAssignKey === 'fresadora' && 'Asignar Fresadora'}
+                </Text>
+                <TouchableOpacity onPress={() => setShowUserSelectModal(false)}>
+                  <Ionicons name="close" size={24} color="#313E4B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView>
+                {users.map((u) => (
+                  <TouchableOpacity
+                    key={u.id_usuario}
+                    className="py-3 border-b border-gray-200"
+                    onPress={() => {
+                      if (currentAssignKey === 'cliente') { setCliente(u.nombre_completo); setSelectedClienteId(u.id_usuario); }
+                      if (currentAssignKey === 'medico') { setSolicitante(u.nombre_completo); }
+                      if (currentAssignKey === 'dado') { setDado(u.nombre_completo); setSelectedDadoId(u.id_usuario); }
+                      if (currentAssignKey === 'disenador') { setDisenador(u.nombre_completo); setSelectedDisenadorId(u.id_usuario); }
+                      if (currentAssignKey === 'fresadora') { setFresadora(u.nombre_completo); setSelectedFresadoraId(u.id_usuario); }
+                      setShowUserSelectModal(false);
+                    }}
+                  >
+                    <View className="flex-row items-center">
+                      <Text className="text-black flex-1">{u.nombre_completo}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+                {users.length === 0 && (
+                  <View className="py-6 items-center">
+                    <Text className="text-gray-500">No hay usuarios disponibles</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </SafeAreaView>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

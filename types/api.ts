@@ -27,3 +27,24 @@ export interface CreateUserRequest {
   contrasena: string;
   correo: string;
 }
+
+// Estatus de pago
+export interface EstatusPago {
+  id_estatuspago: number;
+  n_estatuspago: string;
+}
+
+// Productos
+export interface Product {
+  id_producto: number;
+  n_producto: string;
+  descripcion?: string;
+  created_at?: string;
+  cantidad?: number;
+}
+
+// Prioridades
+export interface Prioridad {
+  id_prioridad: number;
+  n_prioridad: string;
+}
