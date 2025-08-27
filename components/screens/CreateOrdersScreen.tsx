@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   KeyboardAvoidingView,
   Modal,
   Alert,
+  Keyboard,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +34,13 @@ export default function CreateOrdersScreen() {
   const [disenador, setDisenador] = useState('');
   const [fresadora, setFresadora] = useState('');
   const [direccion, setDireccion] = useState('');
+  const [showDireccionOptionsModal, setShowDireccionOptionsModal] = useState(false);
+  const [showDireccionFormModal, setShowDireccionFormModal] = useState(false);
+  const [dirCalle, setDirCalle] = useState('');
+  const [dirNumero, setDirNumero] = useState('');
+  const [dirCP, setDirCP] = useState('');
+  const [dirColonia, setDirColonia] = useState('');
+  const bottomOffset = useRef(new Animated.Value(0)).current;
   const [estatusPagoList, setEstatusPagoList] = useState<EstatusPago[]>([]);
   const [showEstatusPagoModal, setShowEstatusPagoModal] = useState(false);
   type UsuarioBasic = {
@@ -155,6 +165,15 @@ export default function CreateOrdersScreen() {
     return total.toFixed(2);
   };
 
+  const formatDireccion = (calle: string, numero: string, cp: string, colonia: string) => {
+    const c = (calle || '').trim();
+    const n = (numero || '').trim();
+    const z = (cp || '').trim();
+    const col = (colonia || '').trim();
+    // Formato solicitado: "calle {nombre} y {numero}, col. {colonia}, cp. {cp}"
+    return `calle ${c}${n ? ` y ${n}` : ''}${col ? `, col. ${col}` : ''}${z ? `, cp. ${z}` : ''}`.trim();
+  };
+
   // Registrar pedido
   const handleRegistrar = async () => {
     // Armar JSON con la estructura solicitada
@@ -243,6 +262,40 @@ export default function CreateOrdersScreen() {
     };
     fetchPrioridades();
   }, []);
+
+  // Animación de modal de dirección (igual a Agregar Producto)
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (e: any) => {
+      const height = e?.endCoordinates?.height || 0;
+      const duration = 450;
+      Animated.timing(bottomOffset, {
+        toValue: height,
+        duration,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const onHide = () => {
+      const duration = 200;
+      Animated.timing(bottomOffset, {
+        toValue: 0,
+        duration,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const showSub = Keyboard.addListener(showEvent as any, onShow);
+    const hideSub = Keyboard.addListener(hideEvent as any, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [bottomOffset]);
 
   // Autocompletar correo/teléfono del cliente al seleccionar un cliente por ID
   useEffect(() => {
@@ -369,14 +422,13 @@ export default function CreateOrdersScreen() {
 
             {/* Dirección */}
             <Text className="text-title-color font-bold text-label mb-2">Dirección</Text>
-            <TextInput
-              className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-12"
-              value={direccion}
-              onChangeText={setDireccion}
-              placeholder=""
-              multiline={false}
-              style={{ fontSize: 16 }}
-            />
+            <TouchableOpacity
+              className="bg-input-color rounded-md px-4 py-3 mb-4 flex-row items-center h-12"
+              onPress={() => setShowDireccionOptionsModal(true)}
+            >
+              <Text className={`flex-1 ${direccion ? 'text-black' : 'text-gray-500'}`}>{direccion || 'Seleccionar'}</Text>
+              <Ionicons name="chevron-forward-outline" size={20} color="#313E4B" />
+            </TouchableOpacity>
 
             {/* Nombre del médico */}
             <Text className="text-title-color font-bold text-label mb-2">Nombre del médico</Text>
@@ -720,6 +772,132 @@ export default function CreateOrdersScreen() {
                 )}
               </ScrollView>
             </SafeAreaView>
+          </View>
+        </Modal>
+        {/* Modal: Opciones de Dirección */}
+        <Modal
+          visible={showDireccionOptionsModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDireccionOptionsModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <SafeAreaView edges={['bottom']} className="bg-white rounded-t-2xl p-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-title-color text-lg font-bold">Dirección</Text>
+                <TouchableOpacity onPress={() => setShowDireccionOptionsModal(false)}>
+                  <Ionicons name="close" size={24} color="#313E4B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView>
+                <TouchableOpacity
+                  className="py-3 border-b border-gray-200 flex-row items-center"
+                  onPress={() => {
+                    setDireccion('Recoger');
+                    setShowDireccionOptionsModal(false);
+                  }}
+                >
+                  <Text className="text-black flex-1">Recoger</Text>
+                  {direccion === 'Recoger' && (
+                    <Ionicons name="checkmark" size={20} color="#0088cc" />
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="py-3 border-b border-gray-200 flex-row items-center"
+                  onPress={() => {
+                    setShowDireccionOptionsModal(false);
+                    setShowDireccionFormModal(true);
+                  }}
+                >
+                  <Text className="text-black flex-1">Añadir dirección</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </SafeAreaView>
+          </View>
+        </Modal>
+
+        {/* Modal: Formulario de Dirección (con animación) */}
+        <Modal
+          visible={showDireccionFormModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDireccionFormModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <Animated.View style={{ marginBottom: bottomOffset }}>
+              <SafeAreaView edges={['bottom']} className="bg-white rounded-t-2xl">
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                  <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
+                    <View className="flex-row items-center justify-between mb-2">
+                      <Text className="text-title-color text-lg font-bold">Añadir dirección</Text>
+                      <TouchableOpacity onPress={() => setShowDireccionFormModal(false)}>
+                        <Ionicons name="close" size={24} color="#313E4B" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text className="text-title-color font-bold text-label mb-2">Nombre de la calle</Text>
+                    <TextInput
+                      className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-3 h-12"
+                      value={dirCalle}
+                      onChangeText={setDirCalle}
+                      placeholder=""
+                      multiline={false}
+                      style={{ fontSize: 16 }}
+                    />
+
+                    <Text className="text-title-color font-bold text-label mb-2">Número</Text>
+                    <TextInput
+                      className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-3 h-12"
+                      value={dirNumero}
+                      onChangeText={(v) => setDirNumero(v.replace(/\D/g, ''))}
+                      keyboardType="numeric"
+                      placeholder=""
+                      multiline={false}
+                      style={{ fontSize: 16 }}
+                    />
+
+                    <Text className="text-title-color font-bold text-label mb-2">Código postal</Text>
+                    <TextInput
+                      className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-3 h-12"
+                      value={dirCP}
+                      onChangeText={(v) => setDirCP(v.replace(/\D/g, '').slice(0, 5))}
+                      keyboardType="numeric"
+                      placeholder=""
+                      multiline={false}
+                      style={{ fontSize: 16 }}
+                    />
+
+                    <Text className="text-title-color font-bold text-label mb-2">Colonia</Text>
+                    <TextInput
+                      className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-6 h-12"
+                      value={dirColonia}
+                      onChangeText={setDirColonia}
+                      placeholder=""
+                      multiline={false}
+                      style={{ fontSize: 16 }}
+                    />
+
+                    <View className="flex-row justify-end mb-2">
+                      <TouchableOpacity className="px-4 py-2 mr-2" onPress={() => setShowDireccionFormModal(false)}>
+                        <Text className="text-gray-600">Cancelar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        className="bg-primary-color px-4 py-2 rounded-md"
+                        onPress={() => {
+                          const formatted = formatDireccion(dirCalle, dirNumero, dirCP, dirColonia);
+                          setDireccion(formatted);
+                          setShowDireccionFormModal(false);
+                        }}
+                      >
+                        <Text className="text-white font-medium">Guardar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </KeyboardAvoidingView>
+              </SafeAreaView>
+            </Animated.View>
           </View>
         </Modal>
         {/* Modal: Selección de Usuario (Dado/Diseñador/Fresadora) */}

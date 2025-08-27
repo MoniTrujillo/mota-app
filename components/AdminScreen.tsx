@@ -34,7 +34,8 @@ import PackagingScreen from './screens/PackagingScreen';
 import DeliveryScreen from './screens/DeliveryScreen';
 import PickupScreen from './screens/PickupScreen';
 import DefaultScreen from './screens/DefaultScreen';
-import AddProductScreen from './screens/AddProductScreen'; // Importar AddProductScreen
+import ManageProductsScreen from './screens/ManageProductsScreen';
+import TableOrdersScreen from './screens/TableOrdersScreen';
 
 const MENU_WIDTH = 250;
 
@@ -42,7 +43,7 @@ const MENU_WIDTH = 250;
 type Screen = 
   | 'users' 
   | 'createAccount'
-  | 'addProduct'
+  | 'manageProducts'
   | 'createOrders'
   | 'tracking'
   | 'qualityControl'
@@ -50,7 +51,8 @@ type Screen =
   | 'correction'
   | 'packaging'
   | 'delivery'
-  | 'pickup';
+  | 'pickup'
+  | 'tableOrders';
 
 export default function AdminScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -84,8 +86,8 @@ export default function AdminScreen() {
         return <UsersScreen />;
       case 'createAccount':
         return <CreateAccountScreen />;
-      case 'addProduct':
-        return <AddProductScreen />; // Usar AddProductScreen
+      case 'manageProducts':
+        return <ManageProductsScreen />; // Usar AddProductScreen
       case 'createOrders':
         return <CreateOrdersScreen />;
       case 'tracking':
@@ -102,6 +104,8 @@ export default function AdminScreen() {
         return <DeliveryScreen />;
       case 'pickup':
         return <PickupScreen />;
+      case 'tableOrders':
+        return <TableOrdersScreen />;
       default:
         return <DefaultScreen />;
     }
@@ -112,7 +116,7 @@ export default function AdminScreen() {
     switch (currentScreen) {
       case 'users': return 'Ver Usuarios';
       case 'createAccount': return 'Crear Cuenta';
-      case 'addProduct': return 'Añadir Producto';
+      case 'manageProducts': return 'Manejar Productos';
       case 'createOrders': return 'Crear Pedidos';
       case 'tracking': return 'Seguimiento';
       case 'qualityControl': return 'Control de Calidad';
@@ -121,6 +125,7 @@ export default function AdminScreen() {
       case 'packaging': return 'Empaque';
       case 'delivery': return 'A Domicilio';
       case 'pickup': return 'Para Recoger';
+  case 'tableOrders': return 'Tabla de pedidos';
       default: return 'Panel de Administración';
     }
   };
@@ -195,9 +200,9 @@ export default function AdminScreen() {
             />
             <MenuItem 
               icon={<Ionicons name="add-circle-outline" size={20} />} 
-              label="Añadir Producto"
-              onPress={() => handleSelectMenuItem('addProduct')}
-              active={currentScreen === 'addProduct'}
+              label="Manejar Productos"
+              onPress={() => handleSelectMenuItem('manageProducts')}
+              active={currentScreen === 'manageProducts'}
             />
             <MenuItem 
               icon={<Ionicons name="cart-outline" size={20} />} 
@@ -213,8 +218,13 @@ export default function AdminScreen() {
             />
             
             <View className="border-t border-gray-300 my-3 mx-2"></View>
-            
-            <Text className="text-title-color font-bold text-sm px-2 py-1">Tabla de pedidos</Text>
+
+            <MenuItem 
+              icon={<Ionicons name="list-outline" size={20} />} 
+              label="Tabla de pedidos"
+              onPress={() => handleSelectMenuItem('tableOrders')}
+              active={currentScreen === 'tableOrders'}
+            />
             
             <MenuItem 
               icon={<MaterialCommunityIcons name="quality-high" size={20} />} 
