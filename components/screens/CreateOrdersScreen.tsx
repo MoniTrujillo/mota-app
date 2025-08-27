@@ -63,6 +63,7 @@ export default function CreateOrdersScreen() {
   const [selectedFresadoraId, setSelectedFresadoraId] = useState<number | null>(null);
   const [selectedEstatusPagoId, setSelectedEstatusPagoId] = useState<number | null>(null);
   const [selectedPrioridadId, setSelectedPrioridadId] = useState<number | null>(null);
+  const [submittingOrder, setSubmittingOrder] = useState(false);
 
   // Productos dinámicos - ahora con precio unitario
   const [productos, setProductos] = useState([
@@ -176,31 +177,71 @@ export default function CreateOrdersScreen() {
 
   // Registrar pedido
   const handleRegistrar = async () => {
-    // Armar JSON con la estructura solicitada
+    if (submittingOrder) return; // evitar doble envío
+
+    // Validaciones requeridas
+    if (selectedClienteId == null) return Alert.alert('Falta información', 'Selecciona el Cliente.');
+    if (!fechaEntrega) return Alert.alert('Falta información', 'Selecciona la Fecha de entrega.');
+    if (selectedPrioridadId == null) return Alert.alert('Falta información', 'Selecciona la Prioridad.');
+    if (selectedEstatusPagoId == null) return Alert.alert('Falta información', 'Selecciona el Estatus del pago.');
+    if (selectedDadoId == null) return Alert.alert('Falta información', 'Selecciona el Dado.');
+    if (selectedDisenadorId == null) return Alert.alert('Falta información', 'Selecciona el Diseñador.');
+    if (selectedFresadoraId == null) return Alert.alert('Falta información', 'Selecciona la Fresadora.');
+
+    const productosValidos = productos
+      .filter((p) => p.idProducto != null)
+      .map((p) => ({
+        id_producto: p.idProducto as number,
+        cantidad: Number(p.cantidad),
+        precio_unitario: Number(p.precioUnitario),
+      }))
+      .filter((p) => Number.isFinite(p.cantidad) && p.cantidad > 0 && Number.isFinite(p.precio_unitario) && p.precio_unitario > 0);
+
+    if (productosValidos.length === 0) {
+      return Alert.alert('Falta información', 'Agrega al menos un producto con cantidad y precio unitario mayores a 0.');
+    }
+
+    // Asegurar formato de fecha YYYY-MM-DD
+    const fechaStr = /^\d{4}-\d{2}-\d{2}$/.test(fechaEntrega)
+      ? fechaEntrega
+      : (() => {
+          const d = new Date(fechaEntrega);
+          if (isNaN(d.getTime())) return fechaEntrega;
+          const pad = (n: number) => `${n}`.padStart(2, '0');
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        })();
+
     const order = {
       id_cliente: selectedClienteId,
-      fecha_entrega: fechaEntrega || null,
+      fecha_entrega: fechaStr,
       id_prioridad: selectedPrioridadId,
       id_estatuspago: selectedEstatusPagoId,
       id_disenador: selectedDisenadorId,
       id_fresadora: selectedFresadoraId,
       id_dado: selectedDadoId,
-      id_estatusp: 1, // Valor por defecto; ajustar si existe otro estatus en el flujo
+      id_estatusp: 1,
       direccion: direccion || '',
-      productos: productos
-        .filter((p) => p.idProducto)
-        .map((p) => ({
-          id_producto: p.idProducto as number,
-          cantidad: Number(p.cantidad) || 0,
-          precio_unitario: parseFloat(p.precioUnitario) || 0,
-        })),
+      productos: productosValidos,
     };
 
     try {
+      setSubmittingOrder(true);
+      console.log('POST /pedidos payload:', JSON.stringify(order, null, 2));
       await apiService.post('/pedidos', order);
       Alert.alert('Éxito', 'Pedido registrado correctamente');
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'No se pudo registrar el pedido');
+      const status = err?.status;
+      const data = err?.data;
+      console.error('POST /pedidos error:', status, data || err?.message);
+      const backendMsg =
+        (typeof data === 'string' && data) ||
+        data?.message ||
+        data?.error ||
+        err?.message ||
+        'No se pudo registrar el pedido';
+      Alert.alert('Error', backendMsg);
+    } finally {
+      setSubmittingOrder(false);
     }
   };
 
@@ -594,8 +635,11 @@ export default function CreateOrdersScreen() {
             <TouchableOpacity
               className="bg-input-color px-4 py-3 rounded-md shadow-md w-button-width self-center"
               onPress={handleRegistrar}
+              disabled={submittingOrder}
             >
-              <Text className="text-title-color text-center font-medium text-base">Registrar</Text>
+              <Text className="text-title-color text-center font-medium text-base">
+                {submittingOrder ? 'Guardando...' : 'Registrar'}
+              </Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

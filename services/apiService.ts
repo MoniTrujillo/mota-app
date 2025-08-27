@@ -13,6 +13,7 @@ export interface ApiError {
   message: string;
   status?: number;
   code?: string;
+  data?: any;
 }
 
 // Crear instancia de axios
@@ -40,12 +41,20 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: any) => response.data,
   (error: any) => {
+    const rawData = error.response?.data;
+    const computedMessage =
+      (rawData && typeof rawData === 'object' && (rawData.message || rawData.error)) ||
+      (typeof rawData === 'string' ? rawData : undefined) ||
+      error.message ||
+      'Network Error';
+
     const apiError: ApiError = {
-      message: error.response?.data?.message || error.message || 'Network Error',
+      message: computedMessage,
       status: error.response?.status,
       code: error.code,
+      data: rawData,
     };
-    
+
     console.error('API Error:', apiError);
     return Promise.reject(apiError);
   }
