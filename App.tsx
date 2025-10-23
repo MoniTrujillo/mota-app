@@ -17,6 +17,8 @@ import LoadingScreen from "./components/LoadingScreen";
 import OrderConfirmationScreen from "./components/screens/SavedOrderConfirmationScreen";
 import ModifiedOrderConfirmationScreen from "./components/screens/ModifiedOrderConfirmationScreen";
 import ShippingDataScreen from "./components/screens/shippingDataScreen";
+import DoctorsScreen from "./components/DoctorsScreen";
+import OrdersDoctorsConfirmScreen from "./components/screens/OrdersDoctorsConfirmScreen";
 function MainApp() {
   const { isAuthenticated, user } = useAuth();
   
@@ -24,9 +26,9 @@ function MainApp() {
     <SafeAreaProvider>
       <StatusBar style="auto" />
       {isAuthenticated ? (
-        user?.id_area === 1 ? <AdminScreen /> : <HomeScreen />
+        user?.id_area === 1 ? <DoctorsScreen /> : <OrdersDoctorsConfirmScreen />
       ) : (
-        <AdminScreen />
+        <DoctorsScreen />
       )}
     </SafeAreaProvider>
   );
