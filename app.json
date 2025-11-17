@@ -20,14 +20,20 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.juanpablogargoo.motaapp",
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"],
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": [
-      "expo-font"
-    ]
+    "plugins": ["expo-font", "./plugins/withAndroidNetworkConfig.js"],
+    "extra": {
+      "eas": {
+        "projectId": "6d9d456e-fcf7-424f-a571-4d32b2c8f500"
+      }
+    }
   }
 }
