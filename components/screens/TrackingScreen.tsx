@@ -1,8 +1,18 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Keyboard, InputAccessoryView, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import apiService from '../../services/apiService';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Keyboard,
+  InputAccessoryView,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import apiService from "../../services/apiService";
 
 type OrderStage = {
   confirmacion: boolean;
@@ -32,111 +42,142 @@ type Order = {
 };
 
 export default function TrackingScreen() {
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // Mapear estados de la API a eventos
-  const statusMap: { [key: string]: Array<{ stage: keyof OrderStage; description: string }> } = {
-    '1': [
-      { stage: 'confirmacion', description: 'Pedido creado' },
-      { stage: 'confirmadoDoctor', description: 'Confirmado por el Doctor' },
-      { stage: 'confirmadoCliente', description: 'Confirmado por el Cliente' },
+  const statusMap: {
+    [key: string]: Array<{ stage: keyof OrderStage; description: string }>;
+  } = {
+    "1": [
+      { stage: "confirmacion", description: "Pedido creado" },
+      { stage: "confirmadoDoctor", description: "Confirmado por el Doctor" },
+      { stage: "confirmadoCliente", description: "Confirmado por el Cliente" },
     ],
-    '2': [
-      { stage: 'confirmacion', description: 'Pedido creado' },
-      { stage: 'confirmadoDoctor', description: 'Confirmado por el Doctor' },
-      { stage: 'confirmadoCliente', description: 'Confirmado por el Cliente' },
-      { stage: 'diseño', description: 'Entregado a Diseño' },
+    "2": [
+      { stage: "confirmacion", description: "Pedido creado" },
+      { stage: "confirmadoDoctor", description: "Confirmado por el Doctor" },
+      { stage: "confirmadoCliente", description: "Confirmado por el Cliente" },
+      { stage: "diseño", description: "Entregado a Diseño" },
     ],
-    '3': [
-      { stage: 'confirmacion', description: 'Pedido creado' },
-      { stage: 'confirmadoDoctor', description: 'Confirmado por el Doctor' },
-      { stage: 'confirmadoCliente', description: 'Confirmado por el Cliente' },
-      { stage: 'diseño', description: 'Entregado a Diseño' },
-      { stage: 'diseño', description: 'Diseño completado' },
-      { stage: 'fresadora', description: 'Entregado a Fresadora' },
+    "3": [
+      { stage: "confirmacion", description: "Pedido creado" },
+      { stage: "confirmadoDoctor", description: "Confirmado por el Doctor" },
+      { stage: "confirmadoCliente", description: "Confirmado por el Cliente" },
+      { stage: "diseño", description: "Entregado a Diseño" },
+      { stage: "diseño", description: "Diseño completado" },
+      { stage: "fresadora", description: "Entregado a Fresadora" },
     ],
-    '4': [
-      { stage: 'confirmacion', description: 'Pedido creado' },
-      { stage: 'confirmadoDoctor', description: 'Confirmado por el Doctor' },
-      { stage: 'confirmadoCliente', description: 'Confirmado por el Cliente' },
-      { stage: 'diseño', description: 'Entregado a Diseño' },
-      { stage: 'diseño', description: 'Diseño completado' },
-      { stage: 'fresadora', description: 'Entregado a Fresadora' },
-      { stage: 'fresadora', description: 'Fresadora completada' },
-      { stage: 'controlCalidad', description: 'Control de Calidad' },
+    "4": [
+      { stage: "confirmacion", description: "Pedido creado" },
+      { stage: "confirmadoDoctor", description: "Confirmado por el Doctor" },
+      { stage: "confirmadoCliente", description: "Confirmado por el Cliente" },
+      { stage: "diseño", description: "Entregado a Diseño" },
+      { stage: "diseño", description: "Diseño completado" },
+      { stage: "fresadora", description: "Entregado a Fresadora" },
+      { stage: "fresadora", description: "Fresadora completada" },
+      { stage: "controlCalidad", description: "Control de Calidad" },
     ],
-    '5': [
-      { stage: 'confirmacion', description: 'Pedido creado' },
-      { stage: 'confirmadoDoctor', description: 'Confirmado por el Doctor' },
-      { stage: 'confirmadoCliente', description: 'Confirmado por el Cliente' },
-      { stage: 'diseño', description: 'Entregado a Diseño' },
-      { stage: 'diseño', description: 'Diseño completado' },
-      { stage: 'fresadora', description: 'Entregado a Fresadora' },
-      { stage: 'fresadora', description: 'Fresadora completada' },
-      { stage: 'controlCalidad', description: 'Control de Calidad' },
-      { stage: 'areaEmpaque', description: 'Área de Empaque' },
+    "5": [
+      { stage: "confirmacion", description: "Pedido creado" },
+      { stage: "confirmadoDoctor", description: "Confirmado por el Doctor" },
+      { stage: "confirmadoCliente", description: "Confirmado por el Cliente" },
+      { stage: "diseño", description: "Entregado a Diseño" },
+      { stage: "diseño", description: "Diseño completado" },
+      { stage: "fresadora", description: "Entregado a Fresadora" },
+      { stage: "fresadora", description: "Fresadora completada" },
+      { stage: "controlCalidad", description: "Control de Calidad" },
+      { stage: "areaEmpaque", description: "Área de Empaque" },
     ],
-    '6': [
-      { stage: 'confirmacion', description: 'Pedido creado' },
-      { stage: 'confirmadoDoctor', description: 'Confirmado por el Doctor' },
-      { stage: 'confirmadoCliente', description: 'Confirmado por el Cliente' },
-      { stage: 'diseño', description: 'Entregado a Diseño' },
-      { stage: 'diseño', description: 'Diseño completado' },
-      { stage: 'fresadora', description: 'Entregado a Fresadora' },
-      { stage: 'fresadora', description: 'Fresadora completada' },
-      { stage: 'controlCalidad', description: 'Control de Calidad' },
-      { stage: 'areaEmpaque', description: 'Área de Empaque' },
-      { stage: 'entregado', description: 'Entregado' },
+    "6": [
+      { stage: "confirmacion", description: "Pedido creado" },
+      { stage: "confirmadoDoctor", description: "Confirmado por el Doctor" },
+      { stage: "confirmadoCliente", description: "Confirmado por el Cliente" },
+      { stage: "diseño", description: "Entregado a Diseño" },
+      { stage: "diseño", description: "Diseño completado" },
+      { stage: "fresadora", description: "Entregado a Fresadora" },
+      { stage: "fresadora", description: "Fresadora completada" },
+      { stage: "controlCalidad", description: "Control de Calidad" },
+      { stage: "areaEmpaque", description: "Área de Empaque" },
+      { stage: "entregado", description: "Entregado" },
     ],
   };
 
   const fetchOrder = async (orderId: string) => {
     try {
       setLoading(true);
-      setError('');
-      
-      const url = `/pedidos/${orderId}`;
-      const fullUrl = `${process.env.EXPO_PUBLIC_API_URL}${url}`;
-      console.log('🔍 Haciendo petición a:', fullUrl);
-      
-      const data = await apiService.get<any>(url);
-      console.log('✅ Datos recibidos:', data);
+      setError("");
 
-      // Obtener los eventos según el estado
-      const events = statusMap[data.id_estatusp] || [];
-      
-      // Crear objeto Order con los datos de la API
+      const url = `/historial-estatus/pedido/${orderId}`;
+      const fullUrl = `${process.env.EXPO_PUBLIC_API_URL}${url}`;
+      console.log("🔍 Haciendo petición a:", fullUrl);
+
+      const historial = await apiService.get<any[]>(url);
+      console.log("✅ Historial recibido:", historial);
+
+      // Verificar si es un array vacío o no es un array
+      if (!Array.isArray(historial) || historial.length === 0) {
+        setError("Pedido no encontrado");
+        setSelectedOrder(null);
+        setLoading(false);
+        return;
+      }
+
+      // Ordenar por fecha (más reciente primero, luego invertir para timeline)
+      const sortedHistory = [...historial].sort(
+        (a, b) =>
+          new Date(a.fecha_cambio).getTime() -
+          new Date(b.fecha_cambio).getTime()
+      );
+
+      // Obtener el estado más reciente
+      const latestStatus = sortedHistory[sortedHistory.length - 1];
+
+      // Mapear historial a eventos para el timeline
+      const events = sortedHistory.map((item) => ({
+        stage: "confirmacion" as keyof OrderStage, // Placeholder
+        date: new Date(item.fecha_cambio).toLocaleDateString("es-ES", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        description: `${item.estatus_nuevo.n_estatusp}`,
+      }));
+
+      // Crear objeto Order con los datos del historial
       const order: Order = {
-        id: data.id_pedido,
-        status: data.id_estatusp,
-        createdAt: new Date(data.created_at).toLocaleDateString('es-ES'),
+        id: Number(orderId),
+        status: latestStatus.id_estatusp_nuevo.toString(),
+        createdAt: new Date(sortedHistory[0].fecha_cambio).toLocaleDateString(
+          "es-ES"
+        ),
         stages: {
           confirmacion: true,
-          confirmadoDoctor: Number(data.id_estatusp) >= 1,
-          confirmadoCliente: Number(data.id_estatusp) >= 1,
-          inicioProceso: Number(data.id_estatusp) >= 2,
-          dado: false,
-          diseño: Number(data.id_estatusp) >= 2,
-          fresadora: Number(data.id_estatusp) >= 3,
-          controlCalidad: Number(data.id_estatusp) >= 4,
-          areaEmpaque: Number(data.id_estatusp) >= 5,
-          entregado: Number(data.id_estatusp) >= 6,
+          confirmadoDoctor: true,
+          confirmadoCliente: true,
+          inicioProceso: true,
+          dado: sortedHistory.some((h) => h.id_estatusp_nuevo === 2),
+          diseño: sortedHistory.some((h) => h.id_estatusp_nuevo === 3),
+          fresadora: sortedHistory.some((h) => h.id_estatusp_nuevo === 4),
+          controlCalidad: sortedHistory.some((h) => h.id_estatusp_nuevo === 5),
+          areaEmpaque: sortedHistory.some((h) => h.id_estatusp_nuevo === 6),
+          entregado: sortedHistory.some((h) => h.id_estatusp_nuevo === 7),
           devuelto: false,
         },
-        events: events.map((event, index) => ({
-          ...event,
-          date: new Date(data.created_at).toLocaleDateString('es-ES'),
-        })),
+        events,
       };
 
       setSelectedOrder(order);
     } catch (err: any) {
-      console.error('❌ Error al buscar pedido:', err);
-      setError(err.message || 'No se encontró el pedido');
+      console.error("❌ Error al buscar pedido:", err);
+      setError("Pedido no encontrado");
       setSelectedOrder(null);
     } finally {
       setLoading(false);
@@ -144,17 +185,17 @@ export default function TrackingScreen() {
   };
 
   const stageLabels: { [key in keyof OrderStage]: string } = {
-    confirmacion: 'En Espera De Confirmación',
-    confirmadoDoctor: 'Confirmado Por El Doctor',
-    confirmadoCliente: 'Confirmado Por El Cliente',
-    inicioProceso: 'Inicio Del Proceso',
-    dado: 'Dado',
-    diseño: 'Diseño',
-    fresadora: 'Fresadora',
-    controlCalidad: 'Control De Calidad',
-    areaEmpaque: 'Área De Empaque',
-    entregado: 'Entregado',
-    devuelto: 'Devuelto',
+    confirmacion: "En Espera De Confirmación",
+    confirmadoDoctor: "Confirmado Por El Doctor",
+    confirmadoCliente: "Confirmado Por El Cliente",
+    inicioProceso: "Inicio Del Proceso",
+    dado: "Dado",
+    diseño: "Diseño",
+    fresadora: "Fresadora",
+    controlCalidad: "Control De Calidad",
+    areaEmpaque: "Área De Empaque",
+    entregado: "Entregado",
+    devuelto: "Devuelto",
   };
 
   // Búsqueda automática después de escribir
@@ -169,7 +210,7 @@ export default function TrackingScreen() {
       const timeout = setTimeout(() => {
         fetchOrder(searchText);
       }, 800);
-      
+
       setSearchTimeout(timeout);
     } else {
       setSelectedOrder(null);
@@ -185,44 +226,45 @@ export default function TrackingScreen() {
   // Función para manejar el cambio de estado
   const toggleStage = (stage: keyof OrderStage) => {
     if (!selectedOrder) return;
-    
-    const updatedStages = {...selectedOrder.stages};
-    
+
+    const updatedStages = { ...selectedOrder.stages };
+
     // Si es devuelto, resetear todas las etapas excepto diseño y anteriores
-    if (stage === 'devuelto') {
-      Object.keys(updatedStages).forEach(key => {
+    if (stage === "devuelto") {
+      Object.keys(updatedStages).forEach((key) => {
         const stageKey = key as keyof OrderStage;
-        if (stageKey !== 'devuelto') {
-          updatedStages[stageKey] = stageKey === 'diseño' || 
-                                  stageKey === 'dado' || 
-                                  stageKey === 'inicioProceso' || 
-                                  stageKey === 'confirmadoCliente' || 
-                                  stageKey === 'confirmadoDoctor' || 
-                                  stageKey === 'confirmacion';
+        if (stageKey !== "devuelto") {
+          updatedStages[stageKey] =
+            stageKey === "diseño" ||
+            stageKey === "dado" ||
+            stageKey === "inicioProceso" ||
+            stageKey === "confirmadoCliente" ||
+            stageKey === "confirmadoDoctor" ||
+            stageKey === "confirmacion";
         }
       });
       updatedStages[stage] = true;
-    } 
+    }
     // Si no es devuelto, actualizar la etapa específica
     else {
       updatedStages[stage] = !updatedStages[stage];
-      
+
       // Si se desmarca una etapa, desmarcar las siguientes
       if (!updatedStages[stage]) {
         const stageOrder: (keyof OrderStage)[] = [
-          'confirmacion', 
-          'confirmadoDoctor', 
-          'confirmadoCliente', 
-          'inicioProceso', 
-          'dado', 
-          'diseño', 
-          'fresadora', 
-          'controlCalidad', 
-          'areaEmpaque', 
-          'entregado', 
-          'devuelto'
+          "confirmacion",
+          "confirmadoDoctor",
+          "confirmadoCliente",
+          "inicioProceso",
+          "dado",
+          "diseño",
+          "fresadora",
+          "controlCalidad",
+          "areaEmpaque",
+          "entregado",
+          "devuelto",
         ];
-        
+
         const currentStageIndex = stageOrder.indexOf(stage);
         stageOrder.forEach((key, index) => {
           if (index > currentStageIndex) {
@@ -231,10 +273,10 @@ export default function TrackingScreen() {
         });
       }
     }
-    
+
     setSelectedOrder({
       ...selectedOrder,
-      stages: updatedStages
+      stages: updatedStages,
     });
   };
 
@@ -244,7 +286,7 @@ export default function TrackingScreen() {
         <Text className="text-title-color text-heading-lg font-bold text-center mb-6">
           Seguimiento de pedidos
         </Text>
-        
+
         {/* Buscador */}
         <View className="flex-row mb-6 gap-2">
           <View className="flex-1 bg-input-color rounded-md px-4 py-3 justify-center">
@@ -255,23 +297,27 @@ export default function TrackingScreen() {
               placeholder="Buscar pedido"
               placeholderTextColor="#666"
               keyboardType="numeric"
-              inputAccessoryViewID="searchKeyboardAccessory"
+              inputAccessoryViewID={
+                Platform.OS === "ios" ? "searchKeyboardAccessory" : undefined
+              }
             />
           </View>
         </View>
 
-        {/* Accessory View para el teclado */}
-        <InputAccessoryView nativeID="searchKeyboardAccessory">
-          <View className="bg-gray-100 flex-row justify-end p-2 border-t border-gray-300">
-            <TouchableOpacity 
-              className="bg-primary-color rounded-md px-4 py-2"
-              onPress={() => Keyboard.dismiss()}
-            >
-              <Ionicons name="chevron-down" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
-        </InputAccessoryView>
-        
+        {/* Accessory View para el teclado (solo iOS) */}
+        {Platform.OS === "ios" && (
+          <InputAccessoryView nativeID="searchKeyboardAccessory">
+            <View className="bg-gray-100 flex-row justify-end p-2 border-t border-gray-300">
+              <TouchableOpacity
+                className="bg-primary-color rounded-md px-4 py-2"
+                onPress={() => Keyboard.dismiss()}
+              >
+                <Ionicons name="chevron-down" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          </InputAccessoryView>
+        )}
+
         {selectedOrder ? (
           <ScrollView className="bg-white rounded-lg p-6 shadow-md">
             {/* Header del pedido */}
@@ -283,7 +329,7 @@ export default function TrackingScreen() {
                 {selectedOrder.createdAt}
               </Text>
             )}
-            
+
             {/* Timeline */}
             <View>
               {selectedOrder.events?.map((event, index) => (
@@ -291,10 +337,14 @@ export default function TrackingScreen() {
                   {/* Línea vertical y círculo */}
                   <View className="items-center mr-4 pt-1">
                     {/* Círculo */}
-                    <View className={`w-6 h-6 rounded-full border-2 justify-center items-center z-10
-                      ${selectedOrder.stages[event.stage] 
-                        ? 'bg-primary-color border-primary-color' 
-                        : 'bg-white border-gray-300'}`}>
+                    <View
+                      className={`w-6 h-6 rounded-full border-2 justify-center items-center z-10
+                      ${
+                        selectedOrder.stages[event.stage]
+                          ? "bg-primary-color border-primary-color"
+                          : "bg-white border-gray-300"
+                      }`}
+                    >
                       {selectedOrder.stages[event.stage] && (
                         <Ionicons name="checkmark" size={14} color="white" />
                       )}
@@ -304,7 +354,7 @@ export default function TrackingScreen() {
                       <View className="w-1 h-24 bg-gray-400 mt-2" />
                     )}
                   </View>
-                  
+
                   {/* Contenido del evento */}
                   <View className="flex-1 pt-1">
                     <Text className="text-gray-600 text-xs mb-1">
@@ -329,7 +379,7 @@ export default function TrackingScreen() {
           <View className="bg-white rounded-lg p-6 items-center justify-center">
             <Ionicons name="document-text-outline" size={48} color="#94C6CC" />
             <Text className="text-title-color text-lg mt-4 text-center">
-              {error ? error : 'Busca un pedido para ver su seguimiento'}
+              {error ? error : "Busca un pedido para ver su seguimiento"}
             </Text>
           </View>
         )}

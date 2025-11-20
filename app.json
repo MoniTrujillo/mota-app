@@ -23,7 +23,8 @@
       "edgeToEdgeEnabled": true,
       "package": "com.juanpablogargoo.motaapp",
       "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"],
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,10 +6,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Modal,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import apiService from '../../services/apiService';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import apiService from "../../services/apiService";
 
 type OrdersDoctorsConfirmScreenProps = {
   onViewDetails?: (id: string) => void;
@@ -40,23 +40,37 @@ type Order = {
 };
 
 export default function OrdersDoctorsConfirmScreen({
-  onViewDetails = (id: string) => console.log('Ver detalles', id),
-  onConfirm = (id: string) => console.log('Confirmar', id),
-  onReport = (id: string) => console.log('Reportar', id),
+  onViewDetails = (id: string) => console.log("Ver detalles", id),
+  onConfirm = (id: string) => console.log("Confirmar", id),
+  onReport = (id: string) => console.log("Reportar", id),
 }: OrdersDoctorsConfirmScreenProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
+  const [selectedOrderDetails, setSelectedOrderDetails] =
+    useState<Order | null>(null);
 
   // Mapeo de prioridades
   const priorityNames: { [key: number]: string } = {
-    1: 'Baja',
-    2: 'Normal',
-    3: 'Alta',
-    4: 'Urgente',
-    5: 'Crítica',
+    1: "Baja",
+    2: "Normal",
+    3: "Alta",
+    4: "Urgente",
+    5: "Crítica",
+  };
+
+  // Mapeo de estados del proceso
+  const statusNames: { [key: number]: string } = {
+    1: "Pausa",
+    2: "Dado",
+    3: "Diseño",
+    4: "Fresadora",
+    5: "Control de calidad",
+    6: "Empaque",
+    7: "Finalizado",
+    8: "Confirmado",
+    9: "Rechazado",
   };
 
   useEffect(() => {
@@ -66,83 +80,155 @@ export default function OrdersDoctorsConfirmScreen({
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      setError('');
-      
-      console.log('🔍 Obteniendo todos los pedidos...');
-      const response = await apiService.get<any>('/pedidos');
-      console.log('✅ Pedidos recibidos:', response);
+      setError("");
 
-      // La respuesta tiene la estructura { data: [...], total, page, totalPages }
-      const pedidos = response.data || [];
+      console.log("🔍 Obteniendo pedidos del cliente 6...");
+      const pedidos = await apiService.get<any[]>("/pedidos/cliente/6");
+      console.log("✅ Pedidos recibidos:", pedidos);
 
       // Mapear los datos de la API al formato del componente
-      const mappedOrders: Order[] = pedidos.map((pedido: any) => {
-        const isPaused = pedido.estatus?.n_estatusp?.toLowerCase() === 'pausa';
-        
+      const mappedOrders: Order[] = (pedidos || []).map((pedido: any) => {
+        // Mapear productos
+        const productos = (pedido.productos || []).map(
+          (p: any) => `${p.producto?.n_producto || "Producto"} (x${p.cantidad})`
+        );
+
+        // Obtener nombre del estado desde el id_estatusp
+        const estatusPedido = statusNames[pedido.id_estatusp] || "Pendiente";
+        const estatusLower = estatusPedido.toLowerCase();
+        // Confirmado si está en proceso (confirmado, dado, diseño, fresadora, etc.) y no está en pausa o rechazado
+        const isConfirmed = !["pausa", "rechazado"].includes(estatusLower);
+
         return {
           id: pedido.id_pedido.toString(),
-          status: pedido.estatus?.n_estatusp || 'Pendiente',
-          confirmed: !isPaused, // Solo los que NO están en pausa están "confirmados"
+          status: estatusPedido,
+          confirmed: isConfirmed,
           showDetails: false,
           details: {
-            clientName: pedido.cliente?.nombre_completo || 'N/A',
-            phone: 'N/A', // No viene en la API
-            email: 'N/A', // No viene en la API
-            requestName: pedido.cliente?.nombre_completo || 'N/A',
-            products: [], // Necesitarías hacer GET a /pedidos/{id} para obtener productos
-            priority: priorityNames[pedido.id_prioridad] || 'Normal',
-            deliveryDate: new Date(pedido.fecha_entrega).toLocaleDateString('es-ES'),
-            status: pedido.id_estatuspago === 1 ? 'Pendiente' : 'Pagado',
-            price: 'N/A', // No viene en este endpoint, necesitas GET a /pedidos/{id}
-            details: pedido.direccion || 'Sin detalles',
+            clientName: pedido.cliente?.nombre_completo || "Sin información",
+            phone: "N/A",
+            email: "N/A",
+            requestName: pedido.cliente?.nombre_completo || "Sin información",
+            products: productos,
+            priority: priorityNames[pedido.id_prioridad] || "Normal",
+            deliveryDate: new Date(pedido.fecha_entrega).toLocaleDateString(
+              "es-ES"
+            ),
+            status: estatusPedido,
+            price: "N/A",
+            details: pedido.direccion || "Sin detalles",
             designer: `Diseñador #${pedido.id_disenador}`,
-          }
+          },
         };
       });
       setOrders(mappedOrders);
     } catch (err: any) {
-      console.error('❌ Error al obtener pedidos:', err);
-      setError(err.message || 'Error al cargar los pedidos');
+      console.error("❌ Error al obtener pedidos:", err);
+      setError(err.message || "Error al cargar los pedidos");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleViewDetails = (id: string) => {
-    const order = orders.find(o => o.id === id);
-    if (order) {
-      setSelectedOrderDetails(order);
+  const handleViewDetails = async (id: string) => {
+    try {
+      console.log("🔍 Obteniendo detalles del pedido:", id);
+
+      // Obtener detalles completos del pedido
+      const pedidoDetalle = await apiService.get<any>(`/pedidos/${id}`);
+      console.log("✅ Detalle del pedido:", pedidoDetalle);
+
+      // Obtener información de dado, diseñador y fresadora
+      const [dadoInfo, disenadorInfo, fresadoraInfo, clienteInfo] =
+        await Promise.all([
+          apiService
+            .get<any>(`/usuarios/${pedidoDetalle.id_dado}`)
+            .catch(() => null),
+          apiService
+            .get<any>(`/usuarios/${pedidoDetalle.id_disenador}`)
+            .catch(() => null),
+          apiService
+            .get<any>(`/usuarios/${pedidoDetalle.id_fresadora}`)
+            .catch(() => null),
+          apiService
+            .get<any>(`/usuarios/${pedidoDetalle.id_cliente}`)
+            .catch(() => null),
+        ]);
+
+      // Mapear productos con información completa
+      const productos = (pedidoDetalle.productos || []).map(
+        (p: any) =>
+          `${p.producto?.n_producto || "Producto"} - Cantidad: ${p.cantidad} - Precio unitario: $${p.precio_unitario} - Subtotal: $${p.subtotal}`
+      );
+
+      const estatusPedido = pedidoDetalle.estatus?.n_estatusp || "Pendiente";
+      const isPaused = estatusPedido.toLowerCase() === "pausa";
+
+      const orderWithDetails: Order = {
+        id: pedidoDetalle.id_pedido.toString(),
+        status: estatusPedido,
+        confirmed: !isPaused,
+        showDetails: false,
+        details: {
+          clientName: clienteInfo?.nombre_completo || "Sin información",
+          phone:
+            clienteInfo?.telefono || clienteInfo?.telefono_consultorio || "N/A",
+          email: clienteInfo?.correo || "N/A",
+          requestName: clienteInfo?.nombre_completo || "Sin información",
+          products: productos,
+          priority: priorityNames[pedidoDetalle.id_prioridad] || "Normal",
+          deliveryDate: new Date(
+            pedidoDetalle.fecha_entrega
+          ).toLocaleDateString("es-ES"),
+          status: estatusPedido,
+          price: `$${pedidoDetalle.total || 0}`,
+          details: pedidoDetalle.direccion || "Sin detalles",
+          designer:
+            disenadorInfo?.nombre_completo ||
+            `Diseñador #${pedidoDetalle.id_disenador}`,
+        },
+      };
+
+      setSelectedOrderDetails(orderWithDetails);
       setModalVisible(true);
+    } catch (err) {
+      console.error("❌ Error al obtener detalles:", err);
     }
   };
 
   const handleConfirm = async (id: string) => {
     try {
-      // Aquí deberías hacer un PUT/PATCH al endpoint para actualizar el estado
-      console.log('Confirmando pedido:', id);
-      
-      setOrders(orders.map(order => 
-        order.id === id ? { ...order, confirmed: true, status: 'Confirmado' } : order
-      ));
-      
+      console.log("Confirmando pedido:", id);
+
+      // Actualizar el estado del pedido a "Confirmado" (id_estatusp = 8)
+      await apiService.put(`/pedidos/${id}/estatus`, {
+        id_estatusp: 8,
+      });
+
+      console.log("✅ Pedido confirmado exitosamente");
+
+      // Cerrar modal primero
       setModalVisible(false);
       setSelectedOrderDetails(null);
+
+      // Refrescar la lista de pedidos desde el servidor
+      await fetchOrders();
     } catch (err) {
-      console.error('Error al confirmar pedido:', err);
+      console.error("Error al confirmar pedido:", err);
     }
   };
 
   const handleReport = async (id: string) => {
     try {
       // Aquí deberías hacer la llamada a la API para reportar el error
-      console.log('Reportando error del pedido:', id);
-      
-      setOrders(orders.filter(order => order.id !== id));
-      
+      console.log("Reportando error del pedido:", id);
+
+      setOrders(orders.filter((order) => order.id !== id));
+
       setModalVisible(false);
       setSelectedOrderDetails(null);
     } catch (err) {
-      console.error('Error al reportar pedido:', err);
+      console.error("Error al reportar pedido:", err);
     }
   };
 
@@ -160,7 +246,7 @@ export default function OrdersDoctorsConfirmScreen({
       <SafeAreaView className="flex-1 bg-background-color items-center justify-center p-4">
         <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
         <Text className="text-red-500 text-lg mt-4 text-center">{error}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           className="bg-primary-color py-2.5 px-5 rounded-lg mt-4"
           onPress={fetchOrders}
         >
@@ -171,82 +257,116 @@ export default function OrdersDoctorsConfirmScreen({
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background-color" edges={['top','right','bottom','left']}>
+    <SafeAreaView
+      className="flex-1 bg-background-color"
+      edges={["top", "right", "bottom", "left"]}
+    >
       <View className="flex-1 p-4">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className="min-w-[490px] bg-white rounded-lg shadow-md overflow-hidden">
-            {/* Header */}
-            <View className="flex-row border-b border-gray-300 p-3 bg-sidebar-bg items-center">
-              <Text className="w-[90px] pl-1.5 text-title-color font-semibold">Pedido</Text>
-              <Text className="w-[150px] text-title-color font-semibold text-center">Trabajo</Text>
-              <Text className="w-[150px] text-title-color font-semibold text-center">Estado</Text>
-              <Text className="w-[100px] text-title-color font-semibold text-center">Acción</Text>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {orders.length === 0 ? (
+            <View className="p-8 items-center">
+              <Ionicons name="document-outline" size={48} color="#94C6CC" />
+              <Text className="text-gray-500 mt-4">
+                No hay pedidos disponibles
+              </Text>
             </View>
-
-            {/* Filas */}
-            <ScrollView className="max-h-[620px]" showsVerticalScrollIndicator>
-              {orders.length === 0 ? (
-                <View className="p-8 items-center">
-                  <Ionicons name="document-outline" size={48} color="#94C6CC" />
-                  <Text className="text-gray-500 mt-4">No hay pedidos disponibles</Text>
+          ) : (
+            orders.map((order, index) => (
+              <View
+                key={`${order.id}-${index}`}
+                className="bg-white rounded-lg mb-4 p-4 shadow-sm border border-gray-100"
+              >
+                {/* Header de la tarjeta */}
+                <View className="flex-row justify-between items-center mb-3">
+                  <Text className="text-lg font-bold text-title-color">
+                    Pedido #{order.id}
+                  </Text>
+                  <View className="flex-row gap-2">
+                    <TouchableOpacity
+                      onPress={() => handleViewDetails(order.id)}
+                      className="p-2"
+                    >
+                      <Ionicons name="eye-outline" size={20} color="#313E4B" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleReport(order.id)}
+                      className="p-2"
+                    >
+                      <Ionicons
+                        name="alert-circle-outline"
+                        size={20}
+                        color="#313E4B"
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleConfirm(order.id)}
+                      className="p-2"
+                    >
+                      <Ionicons
+                        name="checkmark-circle-outline"
+                        size={20}
+                        color="#313E4B"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              ) : (
-                orders.map((order, index) => (
-                <View key={`${order.id}-${index}`}>
-                  <View className="flex-row items-center border-b border-gray-200 p-4 bg-white">
-                    {/* Pedido */}
-                    <Text className="w-[90px] pl-1.5 text-title-color">{order.id}</Text>
 
-                    {/* Ver detalles */}
-                    <View className="w-[150px] items-center">
-                      <TouchableOpacity
-                        onPress={() => handleViewDetails(order.id)}
-                        activeOpacity={order.confirmed ? 1 : 0.85}
-                        disabled={order.confirmed}
-                        className={`min-w-[80px] py-1.5 px-2.5 rounded-md items-center justify-center ${
-                          order.confirmed ? 'bg-gray-200' : 'bg-primary-color'
-                        }`}
-                      >
-                        <Text className={`font-semibold text-[13px] ${
-                          order.confirmed ? 'text-gray-400' : 'text-white'
-                        }`}>
-                          Ver detalles
+                {/* Información del pedido */}
+                <View className="space-y-2">
+                  {order.details?.clientName &&
+                    order.details.clientName !== "Sin información" && (
+                      <View className="flex-row py-2 border-b border-gray-100">
+                        <Text className="text-gray-600 w-28">Cliente</Text>
+                        <Text className="text-title-color font-medium flex-1">
+                          {order.details.clientName}
                         </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Estado */}
-                    <View className="w-[150px] items-center justify-center">
-                      <View className="flex-row items-center">
-                        <View className={`w-2.5 h-2.5 rounded-full mr-2 ${
-                          order.confirmed ? 'bg-green-600' : 'bg-red-500'
-                        }`}/>
-                        <View className={`px-3 py-1.5 rounded-full ${
-                          order.confirmed ? 'bg-green-50' : 'bg-red-50'
-                        }`}>
-                          <Text className={`text-sm ${
-                            order.confirmed ? 'text-green-900' : 'text-red-700'
-                          }`}>
-                            {order.status}
-                          </Text>
-                        </View>
                       </View>
-                    </View>
+                    )}
 
-                    {/* Acción */}
-                    <View className="w-[100px] justify-center items-center">
-                      {order.confirmed ? (
-                        <Ionicons name="checkmark-circle" size={26} color="#5FA2AD" />
-                      ) : (
-                        <Ionicons name="time" size={26} color="#5FA2AD" />
-                      )}
+                  <View className="flex-row py-2 border-b border-gray-100">
+                    <Text className="text-gray-600 w-28">Prioridad</Text>
+                    <Text className="text-title-color font-medium flex-1">
+                      {order.details?.priority || "N/A"}
+                    </Text>
+                  </View>
+
+                  <View className="flex-row py-2 border-b border-gray-100">
+                    <Text className="text-gray-600 w-28">Entrega</Text>
+                    <Text className="text-title-color font-medium flex-1">
+                      {order.details?.deliveryDate || "N/A"}
+                    </Text>
+                  </View>
+
+                  <View className="flex-row py-2">
+                    <Text className="text-gray-600 w-28">Estado</Text>
+                    <View className="flex-row items-center flex-1">
+                      <View
+                        className={`w-2 h-2 rounded-full mr-2 ${
+                          order.confirmed ? "bg-green-500" : "bg-red-500"
+                        }`}
+                      />
+                      <Text className="text-title-color font-medium">
+                        {order.status}
+                      </Text>
                     </View>
                   </View>
                 </View>
-              ))
-              )}
-            </ScrollView>
-          </View>
+
+                {/* Ver más */}
+                <TouchableOpacity
+                  onPress={() => handleViewDetails(order.id)}
+                  className="mt-3 items-center"
+                >
+                  <View className="flex-row items-center">
+                    <Text className="text-primary-color font-medium mr-1">
+                      Ver más
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color="#5FA2AD" />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
         </ScrollView>
 
         {/* Modal de detalles */}
@@ -273,33 +393,55 @@ export default function OrdersDoctorsConfirmScreen({
                 {selectedOrderDetails?.details && (
                   <>
                     <Text className="text-base font-semibold text-gray-700 mb-3">
-                      DATOS DEL CLIENTE
-                    </Text>
-                    <Text className="text-title-color mb-1">Cliente: {selectedOrderDetails.details.clientName}</Text>
-                    <Text className="text-title-color mb-1">Teléfono: {selectedOrderDetails.details.phone}</Text>
-                    <Text className="text-title-color mb-4">Correo: {selectedOrderDetails.details.email}</Text>
-
-                    <Text className="text-base font-semibold text-gray-700 mb-3 mt-4">
                       DATOS DEL PEDIDO
                     </Text>
-                    <Text className="text-title-color mb-1">Nombre del solicitante: {selectedOrderDetails.details.requestName}</Text>
-                    <Text className="text-title-color mb-1">Productos:</Text>
-                    {selectedOrderDetails.details.products.length > 0 ? (
-                      selectedOrderDetails.details.products.map((product, i) => (
-                        <Text key={i} className="text-title-color mb-1">  • {product}</Text>
-                      ))
-                    ) : (
-                      <Text className="text-gray-500 mb-1">  • Sin productos registrados</Text>
-                    )}
-                    <Text className="text-title-color mb-1">Prioridad: {selectedOrderDetails.details.priority}</Text>
-                    <Text className="text-title-color mb-1">Fecha estimada de entrega: {selectedOrderDetails.details.deliveryDate}</Text>
-                    <Text className="text-title-color mb-1">Estatus de pago: {selectedOrderDetails.details.status} ({selectedOrderDetails.details.price})</Text>
-                    <Text className="text-title-color mb-4">Detalles del pedido: {selectedOrderDetails.details.details}</Text>
-
-                    <Text className="text-base font-semibold text-gray-700 mb-3 mt-4">
-                      DATOS ADICIONALES
+                    <Text className="text-title-color mb-1">
+                      <Text className="font-bold text-black">
+                        Nombre del solicitante:
+                      </Text>{" "}
+                      {selectedOrderDetails.details.requestName}
                     </Text>
-                    <Text className="text-title-color mb-4">Diseñador: {selectedOrderDetails.details.designer}</Text>
+                    <Text className="text-title-color mb-1">
+                      <Text className="font-bold text-black">Productos:</Text>
+                    </Text>
+                    {selectedOrderDetails.details.products.length > 0 ? (
+                      selectedOrderDetails.details.products.map(
+                        (product, i) => (
+                          <Text key={i} className="text-title-color mb-1">
+                            {" "}
+                            • {product}
+                          </Text>
+                        )
+                      )
+                    ) : (
+                      <Text className="text-gray-500 mb-1">
+                        {" "}
+                        • Sin productos registrados
+                      </Text>
+                    )}
+                    <Text className="text-title-color mb-1">
+                      <Text className="font-bold text-black">Prioridad:</Text>{" "}
+                      {selectedOrderDetails.details.priority}
+                    </Text>
+                    <Text className="text-title-color mb-1">
+                      <Text className="font-bold text-black">
+                        Fecha estimada de entrega:
+                      </Text>{" "}
+                      {selectedOrderDetails.details.deliveryDate}
+                    </Text>
+                    <Text className="text-title-color mb-1">
+                      <Text className="font-bold text-black">
+                        Estatus de pago:
+                      </Text>{" "}
+                      {selectedOrderDetails.details.status} (
+                      {selectedOrderDetails.details.price})
+                    </Text>
+                    <Text className="text-title-color mb-4">
+                      <Text className="font-bold text-black">
+                        Detalles del pedido:
+                      </Text>{" "}
+                      {selectedOrderDetails.details.details}
+                    </Text>
 
                     {/* Botones */}
                     <View className="flex-row justify-center gap-3 mt-6">
@@ -307,13 +449,17 @@ export default function OrdersDoctorsConfirmScreen({
                         className="bg-primary-color py-3 px-6 rounded-lg min-w-[130px] items-center"
                         onPress={() => handleConfirm(selectedOrderDetails.id)}
                       >
-                        <Text className="text-white font-semibold text-base">Confirmar</Text>
+                        <Text className="text-white font-semibold text-base">
+                          Confirmar
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         className="bg-red-500 py-3 px-6 rounded-lg min-w-[130px] items-center"
                         onPress={() => handleReport(selectedOrderDetails.id)}
                       >
-                        <Text className="text-white font-semibold text-base">Reportar error</Text>
+                        <Text className="text-white font-semibold text-base">
+                          Reportar error
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   </>

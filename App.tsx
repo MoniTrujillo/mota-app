@@ -1,18 +1,18 @@
 import "./global.css";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider } from "react-native-safe-area-context"; 
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useState } from "react";
 import { Dimensions } from "react-native";
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
   withTiming,
-  Easing
+  Easing,
 } from "react-native-reanimated";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LoginScreen from "./components/LoginScreen";
 import HomeScreen from "./components/HomeScreen";
-import AdminScreen from "./components/AdminScreen"; 
+import AdminScreen from "./components/AdminScreen";
 import LoadingScreen from "./components/LoadingScreen";
 import OrderConfirmationScreen from "./components/screens/SavedOrderConfirmationScreen";
 import ModifiedOrderConfirmationScreen from "./components/screens/ModifiedOrderConfirmationScreen";
@@ -20,15 +20,27 @@ import ShippingDataScreen from "./components/screens/shippingDataScreen";
 import DoctorsScreen from "./components/DoctorsScreen";
 import OrdersDoctorsConfirmScreen from "./components/screens/OrdersDoctorsConfirmScreen";
 function MainApp() {
-  const { isAuthenticated, user } = useAuth();
-  
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <SafeAreaProvider>
+        <LoadingScreen />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <StatusBar style="auto" />
       {isAuthenticated ? (
-        user?.id_area === 1 ? <DoctorsScreen /> : <OrdersDoctorsConfirmScreen />
+        user?.id_funcion === 6 ? (
+          <AdminScreen />
+        ) : (
+          <DoctorsScreen />
+        )
       ) : (
-        <DoctorsScreen />
+        <LoginScreen />
       )}
     </SafeAreaProvider>
   );

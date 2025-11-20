@@ -40,7 +40,7 @@ export interface Product {
   n_producto: string;
   descripcion?: string;
   created_at?: string;
-  cantidad?: number;
+  precio?: number;
 }
 
 // Prioridades

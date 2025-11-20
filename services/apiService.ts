@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios from "axios";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -21,7 +21,7 @@ const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -31,7 +31,9 @@ apiClient.interceptors.request.use(
     // Agregar token si existe
     // const token = AsyncStorage.getItem('token');
     // if (token) config.headers.Authorization = `Bearer ${token}`;
-    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.url}`);
+    console.log(
+      `Making ${config.method?.toUpperCase()} request to: ${config.url}`
+    );
     return config;
   },
   (error: any) => Promise.reject(error)
@@ -43,10 +45,12 @@ apiClient.interceptors.response.use(
   (error: any) => {
     const rawData = error.response?.data;
     const computedMessage =
-      (rawData && typeof rawData === 'object' && (rawData.message || rawData.error)) ||
-      (typeof rawData === 'string' ? rawData : undefined) ||
+      (rawData &&
+        typeof rawData === "object" &&
+        (rawData.message || rawData.error)) ||
+      (typeof rawData === "string" ? rawData : undefined) ||
       error.message ||
-      'Network Error';
+      "Network Error";
 
     const apiError: ApiError = {
       message: computedMessage,
@@ -55,7 +59,7 @@ apiClient.interceptors.response.use(
       data: rawData,
     };
 
-    console.error('API Error:', apiError);
+    console.error("API Error:", apiError);
     return Promise.reject(apiError);
   }
 );
@@ -67,22 +71,28 @@ export const apiService = {
     const response = await apiClient.get(endpoint);
     return response as T;
   },
-  
+
   // POST request
   post: async <T, D = any>(endpoint: string, data: D): Promise<T> => {
     const response = await apiClient.post(endpoint, data);
     return response as T;
   },
-  
+
   // PUT request
   put: async <T, D = any>(endpoint: string, data: D): Promise<T> => {
     const response = await apiClient.put(endpoint, data);
     return response as T;
   },
-  
+
   // DELETE request
   delete: async <T>(endpoint: string): Promise<T> => {
     const response = await apiClient.delete(endpoint);
+    return response as T;
+  },
+
+  // PATCH request
+  patch: async <T, D = any>(endpoint: string, data: D): Promise<T> => {
+    const response = await apiClient.patch(endpoint, data);
     return response as T;
   },
 };
