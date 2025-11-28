@@ -770,7 +770,9 @@ export default function CreateOrdersScreen() {
                 <TextInput
                   className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-24"
                   value={producto.comentario}
-                  onChangeText={(v) => handleChangeProducto(idx, "comentario", v)}
+                  onChangeText={(v) =>
+                    handleChangeProducto(idx, "comentario", v)
+                  }
                   multiline
                   style={{ textAlignVertical: "top", fontSize: 16 }}
                   placeholder=""
