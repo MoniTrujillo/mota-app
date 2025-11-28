@@ -6,6 +6,11 @@ import apiService from '../../services/apiService';
 type Pedido = {
   id_pedido: number;
   estatus?: { n_estatusp?: string };
+  id_estatuspago?: number;
+};
+
+type TableOrdersScreenProps = {
+  onEditPedido?: (pedidoId: number) => void;
 };
 
 const statusStyle = (statusRaw: string | undefined) => {
@@ -17,7 +22,7 @@ const statusStyle = (statusRaw: string | undefined) => {
   return { bg: 'bg-blue-100', dot: 'bg-blue-500', text: 'text-blue-700', label: statusRaw || '—' };
 };
 
-export default function TableOrdersScreen() {
+export default function TableOrdersScreen({ onEditPedido }: TableOrdersScreenProps) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,10 +48,11 @@ export default function TableOrdersScreen() {
   }, []);
 
   const handleEdit = (p: Pedido) => {
-    Alert.alert('Editar', `Editar pedido ${p.id_pedido}`);
-  };
-  const handleStart = (p: Pedido) => {
-    Alert.alert('Iniciar', `Iniciar pedido ${p.id_pedido}`);
+    if (onEditPedido) {
+      onEditPedido(p.id_pedido);
+    } else {
+      Alert.alert('Editar', `Editar pedido ${p.id_pedido}`);
+    }
   };
 
   return (
@@ -62,7 +68,6 @@ export default function TableOrdersScreen() {
         <View className="flex-row items-center py-3">
           <Text className="w-16 text-title-color font-semibold">Pedido</Text>
           <Text className="flex-[1] text-title-color font-semibold ml-2">Estado</Text>
-          <Text className="w-10" />
           <Text className="w-10" />
         </View>
         <View className="border-b border-gray-300" />
@@ -92,9 +97,6 @@ export default function TableOrdersScreen() {
                 </View>
                 <TouchableOpacity onPress={() => handleEdit(p)} className="w-10 items-center">
                   <Ionicons name="create-outline" size={24} color="#313E4B" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleStart(p)} className="w-10 items-center">
-                  <Ionicons name="play-outline" size={24} color="#313E4B" />
                 </TouchableOpacity>
               </View>
               <View className="border-b border-gray-200 mt-3" />

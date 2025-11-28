@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import apiService from "../../services/apiService";
+import { useAuth } from "../../contexts/AuthContext";
 
 type Notification = {
   id_notificacion: number;
@@ -27,13 +28,14 @@ type NotificationResponse = {
   notificaciones: Notification[];
 };
 
-type DoctorNotificationScreenProps = {
+type NotificationScreenProps = {
   onNavigateToConfirm: () => void;
 };
 
-export default function DoctorNotificationScreen({
+export default function NotificationScreen({
   onNavigateToConfirm,
-}: DoctorNotificationScreenProps) {
+}: NotificationScreenProps) {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,8 +46,9 @@ export default function DoctorNotificationScreen({
   const fetchNotifications = async () => {
     try {
       setLoading(true);
+      const userId = user?.id_usuario || 6;
       const response = await apiService.get<NotificationResponse>(
-        "/notificaciones/user/6"
+        `/notificaciones/user/${userId}`
       );
       // Filtrar solo notificaciones no leídas
       const unread = (response?.notificaciones || []).filter((n) => !n.leida);

@@ -28,23 +28,28 @@ interface UserExtended extends User {
   };
 }
 
-// Define los grupos de usuarios
-type UserGroup = {
-  id: string;
-  title: string;
-  subtitle: string;
-  filter: (user: UserExtended) => boolean;
-};
-
 export default function UsersScreen() {
   const [users, setUsers] = useState<UserExtended[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedFunctionId, setSelectedFunctionId] = useState<number | null>(null);
   const [isFiltersView, setIsFiltersView] = useState(true); // true para mostrar filtros, false para mostrar lista
+  const [functions, setFunctions] = useState<Array<{ id_funcion: number; n_funcion: string }>>([]);
 
-  // Función para cargar los usuarios
+  // Función para cargar las funciones disponibles
+  const fetchFunctions = async () => {
+    try {
+      const fetchedFunctions = await apiService.get<Array<{ id_funcion: number; n_funcion: string }>>('/funciones');
+      if (Array.isArray(fetchedFunctions)) {
+        setFunctions(fetchedFunctions);
+      }
+    } catch (err: any) {
+      console.error('Error al cargar funciones:', err);
+    }
+  };
+
+  // Función para cargar los usuarios por función
   const fetchUsers = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     setError(null);
@@ -75,57 +80,27 @@ export default function UsersScreen() {
     await fetchUsers(false);
   };
 
-  // Definir los grupos de usuarios para filtrar
-  const userGroups: UserGroup[] = [
-    {
-      id: 'admin',
-      title: 'Usuarios A',
-      subtitle: 'Administradores',
-      filter: (user) => user.funcion?.n_funcion.toLowerCase() === 'administrador'
-    },
-    {
-      id: 'secretary',
-      title: 'Usuarios B',
-      subtitle: 'Secretarias',
-      filter: (user) => user.funcion?.n_funcion.toLowerCase() === 'secretaria'
-    },
-    {
-      id: 'doctor',
-      title: 'Usuarios C',
-      subtitle: 'Doctores',
-      filter: (user) => user.funcion?.n_funcion.toLowerCase() === 'médico' || user.funcion?.n_funcion.toLowerCase() === 'doctor'
-    },
-    {
-      id: 'worker',
-      title: 'Usuarios D',
-      subtitle: 'Trabajadores',
-      filter: (user) => user.funcion?.n_funcion.toLowerCase() === 'trabajador'
-    }
-  ];
-
-  // Función para manejar la selección de un grupo
-  const handleSelectGroup = (groupId: string) => {
-    setSelectedGroup(groupId);
+  // Función para manejar la selección de una función
+  const handleSelectFunction = (functionId: number) => {
+    setSelectedFunctionId(functionId);
     setIsFiltersView(false);
   };
 
   // Función para volver a la vista de filtros
   const handleBackToFilters = () => {
-    setSelectedGroup(null);
+    setSelectedFunctionId(null);
     setIsFiltersView(true);
   };
 
-  // Filtrar usuarios basados en el grupo seleccionado
-  const filteredUsers = selectedGroup 
-    ? users.filter(user => {
-        const group = userGroups.find(g => g.id === selectedGroup);
-        return group ? group.filter(user) : false;
-      }) 
+  // Filtrar usuarios basados en la función seleccionada
+  const filteredUsers = selectedFunctionId 
+    ? users.filter(user => user.funcion?.id_funcion === selectedFunctionId) 
     : users;
 
-  // Cargar los usuarios al montar el componente
+  // Cargar los usuarios y funciones al montar el componente
   useEffect(() => {
     fetchUsers();
+    fetchFunctions();
   }, []);
 
   // Función para obtener el color según la función del usuario
@@ -188,18 +163,20 @@ export default function UsersScreen() {
     );
   };
 
-  // Renderizar la tarjeta de filtro de usuarios
-  const renderUserGroupCard = (group: UserGroup) => {
+  // Renderizar la tarjeta de filtro de funciones
+  const renderFunctionCard = (func: { id_funcion: number; n_funcion: string }) => {
+    const userCount = users.filter(u => u.funcion?.id_funcion === func.id_funcion).length;
+    
     return (
       <TouchableOpacity 
-        key={group.id}
-        onPress={() => handleSelectGroup(group.id)}
+        key={func.id_funcion}
+        onPress={() => handleSelectFunction(func.id_funcion)}
         className="bg-green-100 mb-4 rounded-lg overflow-hidden"
       >
         <View className="px-4 py-5 flex-row items-center justify-between">
           <View>
-            <Text className="text-title-color text-lg font-bold">{group.title}</Text>
-            <Text className="text-gray-600">{group.subtitle}</Text>
+            <Text className="text-title-color text-lg font-bold">{func.n_funcion}</Text>
+            <Text className="text-gray-600">{userCount} usuario{userCount !== 1 ? 's' : ''}</Text>
           </View>
           <AntDesign name="right" size={20} color="#888" />
         </View>
@@ -275,7 +252,7 @@ export default function UsersScreen() {
           
           {/* Lista de grupos */}
           <ScrollView showsVerticalScrollIndicator={false}>
-            {userGroups.map(renderUserGroupCard)}
+            {functions.map(renderFunctionCard)}
           </ScrollView>
         </View>
       ) : (
@@ -290,7 +267,7 @@ export default function UsersScreen() {
               <Ionicons name="arrow-back" size={24} color="#333" />
             </TouchableOpacity>
             <Text className="text-title-color text-lg font-bold">
-              {userGroups.find(g => g.id === selectedGroup)?.title || 'Usuarios'} - {userGroups.find(g => g.id === selectedGroup)?.subtitle || ''}
+              {functions.find(f => f.id_funcion === selectedFunctionId)?.n_funcion || 'Usuarios'}
             </Text>
           </View>
           

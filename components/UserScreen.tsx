@@ -23,13 +23,12 @@ import { useAuth } from "../contexts/AuthContext";
 // Importar los componentes de pantalla
 import OrdersConfirmScreen from "./screens/OrdersConfirmScreen";
 import NotificationScreen from "./screens/NotificationScreen";
-import TrackingScreen from "./screens/TrackingScreen";
 
 const MENU_WIDTH = 250;
 
-type Screen = "confirmOrders" | "notifications" | "tracking";
+type Screen = "confirmOrders" | "notifications";
 
-export default function DoctorsScreen() {
+export default function UserScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<Screen>("confirmOrders");
   const translateX = useSharedValue(-MENU_WIDTH);
@@ -66,8 +65,6 @@ export default function DoctorsScreen() {
             onNavigateToConfirm={() => handleSelectMenuItem("confirmOrders")}
           />
         );
-      case "tracking":
-        return <TrackingScreen />;
       default:
         return <OrdersConfirmScreen />;
     }
@@ -79,10 +76,8 @@ export default function DoctorsScreen() {
         return "Confirmar Pedidos";
       case "notifications":
         return "Notificaciones";
-      case "tracking":
-        return "Seguimiento";
       default:
-        return "Panel del Doctor";
+        return "Panel de Usuario";
     }
   };
 
@@ -166,12 +161,6 @@ export default function DoctorsScreen() {
               label="Notificaciones"
               onPress={() => handleSelectMenuItem("notifications")}
               active={currentScreen === "notifications"}
-            />
-            <MenuItem
-              icon={<Ionicons name="time-outline" size={20} />}
-              label="Seguimiento"
-              onPress={() => handleSelectMenuItem("tracking")}
-              active={currentScreen === "tracking"}
             />
           </View>
         </ScrollView>

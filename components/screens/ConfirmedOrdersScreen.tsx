@@ -7,15 +7,23 @@ import apiService from '../../services/apiService';
 type PedidoRaw = {
   id_pedido?: number;
   id?: number;
+  direccion?: string;
   fecha_entrega?: string;
+  productos?: Array<{ cantidad?: number }>;
   prioridad?: { n_prioridad?: string };
+  estatuspago?: { n_estatuspago?: string };
+  estatus_pago?: { n_estatuspago?: string };
   id_prioridad?: number;
+  id_estatuspago?: number;
 };
 
 type PedidoUI = {
   id: number;
   fechaEntrega: string;
+  cantidadTotal: number;
   prioridad: string;
+  estatusPago: string;
+  direccion: string;
 };
 
 type PedidoDetalle = {
@@ -49,11 +57,12 @@ const prioridadStyle = (label: string) => {
   return { bg: 'bg-gray-200', text: 'text-gray-800' };
 };
 
-export default function PausedOrdersScreen() {
+export default function ConfirmedOrdersScreen() {
   const [items, setItems] = useState<PedidoUI[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [prioridadMap, setPrioridadMap] = useState<Record<number, string>>({});
+  const [estatusPagoMap, setEstatusPagoMap] = useState<Record<number, string>>({});
   const [showModal, setShowModal] = useState(false);
   const [selectedPedidoDetails, setSelectedPedidoDetails] = useState<PedidoDetalle | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -63,9 +72,10 @@ export default function PausedOrdersScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [prioridadRes, pedidosRes] = await Promise.all([
+      const [prioridadRes, estatusRes, pedidosRes] = await Promise.all([
         apiService.get<any>('/prioridad'),
-        apiService.get<any>('/pedidos/estatus/1'),
+        apiService.get<any>('/estatus-pago'),
+        apiService.get<any>('/pedidos/estatus/8'),
       ]);
 
       const priList: Array<{ id_prioridad: number; n_prioridad: string }> = Array.isArray(prioridadRes)
@@ -73,12 +83,23 @@ export default function PausedOrdersScreen() {
         : Array.isArray(prioridadRes?.data)
         ? prioridadRes.data
         : [];
+      const estList: Array<{ id_estatuspago: number; n_estatuspago: string }> = Array.isArray(estatusRes)
+        ? estatusRes
+        : Array.isArray(estatusRes?.data)
+        ? estatusRes.data
+        : [];
 
       const pMap = priList.reduce<Record<number, string>>((acc, it) => {
         acc[it.id_prioridad] = it.n_prioridad;
         return acc;
       }, {});
+      const eMap = estList.reduce<Record<number, string>>((acc, it) => {
+        acc[it.id_estatuspago] = it.n_estatuspago;
+        return acc;
+      }, {});
+
       setPrioridadMap(pMap);
+      setEstatusPagoMap(eMap);
 
       const list: PedidoRaw[] = Array.isArray(pedidosRes)
         ? pedidosRes
@@ -88,12 +109,18 @@ export default function PausedOrdersScreen() {
 
       const mapped: PedidoUI[] = list.map((p) => {
         const id = p.id_pedido ?? (p as any).id ?? 0;
+        const cantidadTotal = (p.productos || []).reduce((sum, pr) => sum + (Number(pr.cantidad) || 0), 0);
         let prioridad = p.prioridad?.n_prioridad || '';
         if (!prioridad && p.id_prioridad != null) prioridad = pMap[p.id_prioridad] || '';
+        let estatusPago = p.estatuspago?.n_estatuspago || p.estatus_pago?.n_estatuspago || '';
+        if (!estatusPago && p.id_estatuspago != null) estatusPago = eMap[p.id_estatuspago] || '';
         return {
           id,
           fechaEntrega: formatFecha(p.fecha_entrega),
+          cantidadTotal,
           prioridad,
+          estatusPago,
+          direccion: (p.direccion || '').toString(),
         };
       });
       setItems(mapped);
@@ -122,25 +149,25 @@ export default function PausedOrdersScreen() {
     }
   };
 
-  const handleMandarAConfirmar = (id: number) => {
+  const handleMandarADado = (id: number) => {
     Alert.alert(
-      'Mandar a Confirmar',
-      '¿Está seguro de reanudar este pedido?',
+      'Mandar a Dado',
+      '¿Está seguro de enviar este pedido a Dado?',
       [
         { text: 'Cancelar', onPress: () => {} },
-        { text: 'Aceptar', onPress: () => confirmarMandarAConfirmar(id) },
+        { text: 'Aceptar', onPress: () => confirmarMandarADado(id) },
       ]
     );
   };
 
-  const confirmarMandarAConfirmar = async (id: number) => {
+  const confirmarMandarADado = async (id: number) => {
     setEnviando(true);
     try {
-      await apiService.put(`/pedidos/${id}/estatus`, { id_estatusp: 10 });
-      Alert.alert('Éxito', 'Pedido reanudado y enviado a Confirmar');
+      await apiService.put(`/pedidos/${id}/estatus`, { id_estatusp: 2 });
+      Alert.alert('Éxito', 'Pedido enviado a Dado');
       loadData();
     } catch (e: any) {
-      Alert.alert('Error', 'No se pudo reanudar el pedido');
+      Alert.alert('Error', 'No se pudo enviar el pedido');
     } finally {
       setEnviando(false);
     }
@@ -166,26 +193,32 @@ export default function PausedOrdersScreen() {
           <Text className="text-red-600 text-center mt-6">{error}</Text>
         )}
         {!loading && !error && items.length === 0 && (
-          <Text className="text-gray-500 text-center mt-6">No hay pedidos en pausa</Text>
+          <Text className="text-gray-500 text-center mt-6">No hay pedidos confirmados</Text>
         )}
 
         {!loading && !error && items.map((it) => {
           const pStyle = prioridadStyle(it.prioridad);
           return (
             <View key={it.id} className="mx-4 mb-6 rounded-lg border border-gray-200 bg-white overflow-hidden">
-              {/* Header */}
-              <View className="bg-green-100 px-4 py-3 flex-row items-start justify-between">
+              {/* Header con cantidad y fecha dentro */}
+              <View className="bg-blue-100 px-4 py-3 flex-row justify-between">
                 <View>
                   <Text className="text-title-color font-bold">Pedido #{it.id}</Text>
+                  <Text className="text-title-color mt-1">Cantidad {it.cantidadTotal}</Text>
                   {!!it.fechaEntrega && (
                     <Text className="text-title-color mt-1">{it.fechaEntrega}</Text>
                   )}
                 </View>
-                {!!it.prioridad && (
-                  <View className={`px-2 py-1 rounded-full ${pStyle.bg}`}>
-                    <Text className={`${pStyle.text} text-xs font-semibold`}>{it.prioridad}</Text>
-                  </View>
-                )}
+                <View className="items-end">
+                  {!!it.prioridad && (
+                    <View className={`px-2 py-1 rounded-full ${pStyle.bg} mb-1`}>
+                      <Text className={`${pStyle.text} text-xs font-semibold`}>{it.prioridad}</Text>
+                    </View>
+                  )}
+                  {!!it.estatusPago && (
+                    <Text className="text-title-color text-xs">{it.estatusPago.toLowerCase()}</Text>
+                  )}
+                </View>
               </View>
 
               {/* Botones */}
@@ -194,8 +227,8 @@ export default function PausedOrdersScreen() {
                   <TouchableOpacity onPress={() => handleVerDetalles(it.id)} className="px-4 py-2 rounded-md border border-sky-300 bg-sky-100">
                     <Text className="text-title-color text-center">Ver detalles</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleMandarAConfirmar(it.id)} disabled={enviando} className="px-4 py-2 rounded-md border border-green-300 bg-green-100">
-                    {enviando ? <ActivityIndicator color="#064e3b" /> : <Text className="text-title-color text-center">Mandar a confirmar</Text>}
+                  <TouchableOpacity onPress={() => handleMandarADado(it.id)} disabled={enviando} className="px-4 py-2 rounded-md border border-green-300 bg-green-100">
+                    {enviando ? <ActivityIndicator color="#064e3b" /> : <Text className="text-title-color text-center">Mandar a dado</Text>}
                   </TouchableOpacity>
                 </View>
               </View>

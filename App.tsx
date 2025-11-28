@@ -18,7 +18,8 @@ import OrderConfirmationScreen from "./components/screens/SavedOrderConfirmation
 import ModifiedOrderConfirmationScreen from "./components/screens/ModifiedOrderConfirmationScreen";
 import ShippingDataScreen from "./components/screens/shippingDataScreen";
 import DoctorsScreen from "./components/DoctorsScreen";
-import OrdersDoctorsConfirmScreen from "./components/screens/OrdersDoctorsConfirmScreen";
+import UserScreen from "./components/UserScreen";
+import OrdersConfirmScreen from "./components/screens/OrdersConfirmScreen";
 function MainApp() {
   const { isAuthenticated, user, isLoading } = useAuth();
 
@@ -36,8 +37,10 @@ function MainApp() {
       {isAuthenticated ? (
         user?.id_funcion === 6 ? (
           <AdminScreen />
-        ) : (
+        ) : user?.id_funcion === 1 ? (
           <DoctorsScreen />
+        ) : (
+          <UserScreen />
         )
       ) : (
         <LoginScreen />

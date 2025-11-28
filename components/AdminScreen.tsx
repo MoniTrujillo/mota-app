@@ -26,9 +26,12 @@ import { useAuth } from '../contexts/AuthContext';
 import UsersScreen from './screens/UsersScreen';
 import CreateAccountScreen from './screens/CreateAccountScreen';
 import CreateOrdersScreen from './screens/CreateOrdersScreen';
+import EditOrderScreen from './screens/EditOrderScreen';
 import TrackingScreen from './screens/TrackingScreen';
 import QualityControlScreen from './screens/QualityControlScreen';
 import PausedOrdersScreen from './screens/PausedOrdersScreen';
+import ConfirmedOrdersScreen from './screens/ConfirmedOrdersScreen';
+import RejectedOrdersScreen from './screens/RejectedOrdersScreen';
 import CorrectionScreen from './screens/CorrectionScreen';
 import PackagingScreen from './screens/PackagingScreen';
 import DeliveryScreen from './screens/DeliveryScreen';
@@ -45,9 +48,12 @@ type Screen =
   | 'createAccount'
   | 'manageProducts'
   | 'createOrders'
+  | 'editOrder'
   | 'tracking'
   | 'qualityControl'
   | 'pausedOrders'
+  | 'confirmedOrders'
+  | 'rejectedOrders'
   | 'correction'
   | 'packaging'
   | 'delivery'
@@ -57,6 +63,7 @@ type Screen =
 export default function AdminScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<Screen>('users');
+  const [editingPedidoId, setEditingPedidoId] = useState<number | null>(null);
   const translateX = useSharedValue(-MENU_WIDTH);
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
@@ -96,6 +103,10 @@ export default function AdminScreen() {
         return <QualityControlScreen />;
       case 'pausedOrders':
         return <PausedOrdersScreen />;
+      case 'confirmedOrders':
+        return <ConfirmedOrdersScreen />;
+      case 'rejectedOrders':
+        return <RejectedOrdersScreen />;
       case 'correction':
         return <CorrectionScreen />;
       case 'packaging':
@@ -105,7 +116,9 @@ export default function AdminScreen() {
       case 'pickup':
         return <PickupScreen />;
       case 'tableOrders':
-        return <TableOrdersScreen />;
+        return <TableOrdersScreen onEditPedido={(id) => { setEditingPedidoId(id); setCurrentScreen('editOrder'); }} />;
+      case 'editOrder':
+        return editingPedidoId ? <EditOrderScreen pedidoId={editingPedidoId} onClose={() => { setEditingPedidoId(null); setCurrentScreen('tableOrders'); }} /> : null;
       default:
         return <DefaultScreen />;
     }
@@ -121,11 +134,14 @@ export default function AdminScreen() {
       case 'tracking': return 'Seguimiento';
       case 'qualityControl': return 'Control de Calidad';
       case 'pausedOrders': return 'Pedidos en Pausa';
+      case 'confirmedOrders': return 'Pedidos Confirmados';
+      case 'rejectedOrders': return 'Pedidos Rechazados';
       case 'correction': return 'A Corrección';
       case 'packaging': return 'Empaque';
       case 'delivery': return 'A Domicilio';
       case 'pickup': return 'Para Recoger';
-  case 'tableOrders': return 'Tabla de pedidos';
+      case 'tableOrders': return 'Tabla de pedidos';
+      case 'editOrder': return 'Editar Pedido';
       default: return 'Panel de Administración';
     }
   };
@@ -237,6 +253,18 @@ export default function AdminScreen() {
               label="Pedidos pausa"
               onPress={() => handleSelectMenuItem('pausedOrders')}
               active={currentScreen === 'pausedOrders'}
+            />
+            <MenuItem 
+              icon={<Ionicons name="checkmark-circle-outline" size={20} />} 
+              label="Pedidos confirmados"
+              onPress={() => handleSelectMenuItem('confirmedOrders')}
+              active={currentScreen === 'confirmedOrders'}
+            />
+            <MenuItem 
+              icon={<Ionicons name="close-circle-outline" size={20} />} 
+              label="Pedidos rechazados"
+              onPress={() => handleSelectMenuItem('rejectedOrders')}
+              active={currentScreen === 'rejectedOrders'}
             />
             <MenuItem 
               icon={<MaterialCommunityIcons name="file-refresh-outline" size={20} />} 

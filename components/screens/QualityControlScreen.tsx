@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Image, Modal, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import apiService from '../../services/apiService';
 
 type PedidoRaw = {
@@ -25,6 +26,22 @@ type PedidoUI = {
   direccion: string;
 };
 
+type PedidoDetalle = {
+  id_pedido?: number;
+  id?: number;
+  fecha_entrega?: string;
+  fecha_entrega_original?: string;
+  direccion?: string;
+  productos?: Array<{
+    descripcion?: string;
+    cantidad?: number;
+    subtotal?: number;
+  }>;
+  total?: number;
+  prioridad?: { n_prioridad?: string };
+  estatuspago?: { n_estatuspago?: string };
+};
+
 const formatFecha = (iso: string | undefined) => {
   if (!iso) return '';
   const d = new Date(iso);
@@ -46,6 +63,10 @@ export default function QualityControlScreen() {
   const [error, setError] = useState<string | null>(null);
   const [prioridadMap, setPrioridadMap] = useState<Record<number, string>>({});
   const [estatusPagoMap, setEstatusPagoMap] = useState<Record<number, string>>({});
+  const [showModal, setShowModal] = useState(false);
+  const [selectedPedidoDetails, setSelectedPedidoDetails] = useState<PedidoDetalle | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -115,10 +136,66 @@ export default function QualityControlScreen() {
     loadData();
   }, []);
 
-  const onVerDetalles = (id: number) => Alert.alert('Detalles', `Abrir detalles del pedido #${id}`);
-  const onEnviarCorreccion = (id: number) => Alert.alert('Corrección', `Enviar pedido #${id} a corrección`);
-  const onPausar = (id: number) => Alert.alert('Pausar', `Pedido #${id} pausado`);
-  const onEnviarEmpaque = (id: number) => Alert.alert('Empaque', `Enviar pedido #${id} a empaque`);
+  const handleVerDetalles = async (id: number) => {
+    setLoadingDetails(true);
+    try {
+      const res = await apiService.get<PedidoDetalle>(`/pedidos/${id}`);
+      setSelectedPedidoDetails(res.data || res);
+      setShowModal(true);
+    } catch (e: any) {
+      Alert.alert('Error', 'No se pudieron cargar los detalles');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleEnviarCorreccion = (id: number) => {
+    Alert.alert(
+      'Enviar para corrección',
+      '¿Está seguro de enviar este pedido a corrección?',
+      [
+        { text: 'Cancelar', onPress: () => {} },
+        { text: 'Aceptar', onPress: () => confirmarEnvioCorreccion(id) },
+      ]
+    );
+  };
+
+  const confirmarEnvioCorreccion = async (id: number) => {
+    setEnviando(true);
+    try {
+      await apiService.put(`/pedidos/${id}/estatus`, { id_estatusp: 12 });
+      Alert.alert('Éxito', 'Pedido enviado a corrección');
+      loadData();
+    } catch (e: any) {
+      Alert.alert('Error', 'No se pudo enviar el pedido');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const handleEnviarEmpaque = (id: number) => {
+    Alert.alert(
+      'Enviar a empaque',
+      '¿Está seguro de enviar este pedido a empaque?',
+      [
+        { text: 'Cancelar', onPress: () => {} },
+        { text: 'Aceptar', onPress: () => confirmarEnvioEmpaque(id) },
+      ]
+    );
+  };
+
+  const confirmarEnvioEmpaque = async (id: number) => {
+    setEnviando(true);
+    try {
+      await apiService.put(`/pedidos/${id}/estatus`, { id_estatusp: 6 });
+      Alert.alert('Éxito', 'Pedido enviado a empaque');
+      loadData();
+    } catch (e: any) {
+      Alert.alert('Error', 'No se pudo enviar el pedido');
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background-color">
@@ -169,32 +246,162 @@ export default function QualityControlScreen() {
                 </View>
               </View>
 
-              {/* Row 1 buttons */}
-              <View className="px-4">
-                <View className="mt-1 flex-row justify-between">
-                  <TouchableOpacity onPress={() => onVerDetalles(it.id)} className="flex-1 mr-2 px-4 py-2 rounded-md border justify-center border-sky-300 bg-sky-100">
+              {/* Row buttons */}
+              <View className="px-4 pb-4">
+                <View className="mt-3 gap-2">
+                  <TouchableOpacity onPress={() => handleVerDetalles(it.id)} className="px-4 py-2 rounded-md border border-sky-300 bg-sky-100">
                     <Text className="text-title-color text-center">Ver detalles</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => onEnviarCorreccion(it.id)} className="flex-1 ml-2 px-4 py-2 rounded-md border border-rose-300 bg-rose-100">
+                  <TouchableOpacity onPress={() => handleEnviarCorreccion(it.id)} disabled={enviando} className="px-4 py-2 rounded-md border border-rose-300 bg-rose-100">
                     <Text className="text-title-color text-center">Enviar para corrección</Text>
                   </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Row 2 buttons */}
-              <View className="px-4 pb-4">
-                <View className="mt-1 flex-row justify-between">
-                  <TouchableOpacity onPress={() => onPausar(it.id)} className="flex-1 mr-2 px-4 py-2 rounded-md border justify-center border-gray-300 bg-gray-100 ">
-                    <Text className="text-title-color text-center">Pausar </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => onEnviarEmpaque(it.id)} className="flex-1 ml-2 px-4 py-2 rounded-md border border-sky-300 bg-sky-100">
-                    <Text className="text-title-color text-center">Enviar a empaque</Text>
+                  <TouchableOpacity onPress={() => handleEnviarEmpaque(it.id)} disabled={enviando} className="px-4 py-2 rounded-md border border-green-300 bg-green-100">
+                    {enviando ? <ActivityIndicator color="#064e3b" /> : <Text className="text-title-color text-center">Enviar a empaque</Text>}
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           );
         })}
+
+        {/* Modal de detalles del pedido */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showModal}
+          onRequestClose={() => {
+            setShowModal(false);
+            setSelectedPedidoDetails(null);
+          }}
+        >
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <View className="bg-white rounded-lg w-11/12 max-w-2xl max-h-5/6">
+              {/* Header del Modal */}
+              <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
+                <Text className="text-xl font-bold text-title-color">
+                  Detalles - Pedido #{selectedPedidoDetails?.id_pedido || selectedPedidoDetails?.id}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowModal(false);
+                    setSelectedPedidoDetails(null);
+                  }}
+                >
+                  <Ionicons name="close" size={28} color="#5FA2AD" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Contenido del Modal */}
+              {loadingDetails ? (
+                <View className="items-center justify-center py-8">
+                  <ActivityIndicator size="large" color="#5FA2AD" />
+                  <Text className="text-title-color mt-4">Cargando detalles...</Text>
+                </View>
+              ) : selectedPedidoDetails ? (
+                <ScrollView className="p-5">
+                  {/* Información del pedido */}
+                  <View className="mb-4">
+                    <Text className="text-base font-semibold text-gray-700 mb-3">DATOS DEL PEDIDO</Text>
+
+                    <View className="flex-row py-2 border-b border-gray-100">
+                      <Text className="text-gray-600 font-medium">Fecha de entrega:</Text>
+                      <Text className="text-title-color font-semibold flex-1 text-right">
+                        {formatFecha(selectedPedidoDetails.fecha_entrega)}
+                      </Text>
+                    </View>
+
+                    <View className="flex-row py-2 border-b border-gray-100">
+                      <Text className="text-gray-600 font-medium">Total:</Text>
+                      <Text className="text-title-color font-semibold flex-1 text-right">
+                        ${selectedPedidoDetails.total?.toLocaleString('es-CO') || '0'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Productos */}
+                  {selectedPedidoDetails.productos && selectedPedidoDetails.productos.length > 0 && (
+                    <View className="mb-4">
+                      <Text className="text-base font-semibold text-gray-700 mb-3">PRODUCTOS</Text>
+                      {selectedPedidoDetails.productos.map((p, idx) => (
+                        <View key={idx} className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <Text className="text-title-color font-semibold">
+                            {p.descripcion || 'Producto desconocido'}
+                          </Text>
+                          <View className="flex-row justify-between mt-2">
+                            <Text className="text-gray-600 text-sm">Cantidad: {p.cantidad}</Text>
+                            <Text className="text-gray-600 text-sm">
+                              ${p.subtotal?.toLocaleString('es-CO') || '0'}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Botón de cerrar */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowModal(false);
+                      setSelectedPedidoDetails(null);
+                    }}
+                    className="mt-6 bg-primary-color py-3 px-4 rounded-lg"
+                  >
+                    <Text className="text-white font-semibold text-center">Cerrar</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              ) : null}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de confirmación para enviar a corrección */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={showModal && !!selectedPedidoDetails && false}
+          onRequestClose={() => setShowModal(false)}
+        >
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <View className="bg-white rounded-lg w-11/12 max-w-md">
+              {/* Header del Modal */}
+              <View className="p-6 border-b border-gray-200">
+                <Text className="text-xl font-bold text-title-color text-center">
+                  Confirmar Acción
+                </Text>
+              </View>
+
+              {/* Contenido */}
+              <View className="p-6">
+                <View className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <Text className="text-title-color text-center font-semibold text-lg">
+                    ¿Seguro que deseas realizar esta acción?
+                  </Text>
+                </View>
+
+                {/* Botones */}
+                <View className="flex-row gap-3">
+                  <TouchableOpacity
+                    onPress={() => setShowModal(false)}
+                    disabled={enviando}
+                    className="flex-1 py-3 px-4 rounded-lg bg-gray-200"
+                  >
+                    <Text className="text-title-color font-semibold text-center">Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    disabled={enviando}
+                    className="flex-1 py-3 px-4 rounded-lg bg-green-500"
+                  >
+                    {enviando ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-semibold text-center">Confirmar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
