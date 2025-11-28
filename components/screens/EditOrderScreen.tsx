@@ -96,7 +96,7 @@ export default function EditOrderScreen({
       idProducto: null as number | null,
       nombre: "",
       cantidad: "",
-      detalles: "",
+      comentario: "",
       precio: null as number | null,
     },
   ]);
@@ -135,7 +135,7 @@ export default function EditOrderScreen({
         idProducto: null,
         nombre: "",
         cantidad: "",
-        detalles: "",
+        comentario: "",
         precio: null,
       },
     ]);
@@ -152,7 +152,7 @@ export default function EditOrderScreen({
 
   const handleChangeProducto = (
     idx: number,
-    field: "nombre" | "cantidad" | "detalles",
+    field: "nombre" | "cantidad" | "comentario",
     value: string
   ) => {
     const nuevos = [...productos];
@@ -212,6 +212,7 @@ export default function EditOrderScreen({
       .map((p) => ({
         id_producto: p.idProducto as number,
         cantidad: Number(p.cantidad),
+        comentario: p.comentario,
       }))
       .filter((p) => Number.isFinite(p.cantidad) && p.cantidad > 0);
 
@@ -352,7 +353,7 @@ export default function EditOrderScreen({
             idProducto: p.id_producto,
             nombre: p.producto?.n_producto || "",
             cantidad: String(p.cantidad),
-            detalles: p.producto?.descripcion || "",
+            comentario: p.comentario || "",
             precio: p.precio_unitario,
           }));
           setProductos(mappedProducts);
@@ -815,13 +816,13 @@ export default function EditOrderScreen({
                 </View>
 
                 <Text className="text-title-color font-bold text-label mb-2">
-                  Detalles del producto
+                  Comentarios del producto
                 </Text>
                 <TextInput
                   className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-24"
-                  value={producto.detalles}
+                  value={producto.comentario}
                   onChangeText={(v) =>
-                    isPago && handleChangeProducto(idx, "detalles", v)
+                    isPago && handleChangeProducto(idx, "comentario", v)
                   }
                   multiline
                   editable={isPago}

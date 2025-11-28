@@ -45,6 +45,7 @@ type PedidoDetalle = {
     descripcion?: string;
     cantidad?: number;
     subtotal?: number;
+    comentario?: string;
   }>;
   total?: number;
   prioridad?: { n_prioridad?: string };
@@ -160,7 +161,7 @@ export default function QualityControlScreen() {
     setLoadingDetails(true);
     try {
       const res = await apiService.get<PedidoDetalle>(`/pedidos/${id}`);
-      setSelectedPedidoDetails(res.data || res);
+      setSelectedPedidoDetails(res);
       setShowModal(true);
     } catch (e: any) {
       Alert.alert("Error", "No se pudieron cargar los detalles");
@@ -414,6 +415,11 @@ export default function QualityControlScreen() {
                                 ${p.subtotal?.toLocaleString("es-CO") || "0"}
                               </Text>
                             </View>
+                            {p.comentario && (
+                              <Text className="text-gray-600 text-sm mt-2">
+                                Comentario: {p.comentario}
+                              </Text>
+                            )}
                           </View>
                         ))}
                       </View>

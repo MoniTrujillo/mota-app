@@ -45,6 +45,7 @@ type PedidoDetalle = {
     descripcion?: string;
     cantidad?: number;
     subtotal?: number;
+    comentario?: string;
   }>;
   total?: number;
   prioridad?: { n_prioridad?: string };
@@ -362,22 +363,27 @@ export default function ConfirmedOrdersScreen() {
                           PRODUCTOS
                         </Text>
                         {selectedPedidoDetails.productos.map((p, idx) => (
-                          <View
-                            key={idx}
-                            className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                          >
-                            <Text className="text-title-color font-semibold">
-                              {p.descripcion || "Producto desconocido"}
-                            </Text>
-                            <View className="flex-row justify-between mt-2">
-                              <Text className="text-gray-600 text-sm">
-                                Cantidad: {p.cantidad}
+                            <View
+                              key={idx}
+                              className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                            >
+                              <Text className="text-title-color font-semibold">
+                                {p.descripcion || "Producto desconocido"}
                               </Text>
-                              <Text className="text-gray-600 text-sm">
-                                ${p.subtotal?.toLocaleString("es-CO") || "0"}
-                              </Text>
+                              <View className="flex-row justify-between mt-2">
+                                <Text className="text-gray-600 text-sm">
+                                  Cantidad: {p.cantidad}
+                                </Text>
+                                <Text className="text-gray-600 text-sm">
+                                  ${p.subtotal?.toLocaleString("es-CO") || "0"}
+                                </Text>
+                              </View>
+                              {p.comentario && (
+                                <Text className="text-gray-600 text-sm mt-2">
+                                  Comentario: {p.comentario}
+                                </Text>
+                              )}
                             </View>
-                          </View>
                         ))}
                       </View>
                     )}

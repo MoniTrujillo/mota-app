@@ -85,7 +85,7 @@ export default function CreateOrdersScreen() {
       idProducto: null as number | null,
       nombre: "",
       cantidad: "",
-      detalles: "",
+      comentario: "",
       precio: null as number | null,
     },
   ]);
@@ -128,7 +128,7 @@ export default function CreateOrdersScreen() {
         idProducto: null,
         nombre: "",
         cantidad: "",
-        detalles: "",
+        comentario: "",
         precio: null,
       },
     ]);
@@ -147,7 +147,7 @@ export default function CreateOrdersScreen() {
   // Actualizar campo de producto
   const handleChangeProducto = (
     idx: number,
-    field: "nombre" | "cantidad" | "detalles",
+    field: "nombre" | "cantidad" | "comentario",
     value: string
   ) => {
     const nuevos = [...productos];
@@ -212,6 +212,7 @@ export default function CreateOrdersScreen() {
       .map((p) => ({
         id_producto: p.idProducto as number,
         cantidad: Number(p.cantidad),
+        comentario: p.comentario,
       }))
       .filter((p) => Number.isFinite(p.cantidad) && p.cantidad > 0);
 
@@ -764,12 +765,12 @@ export default function CreateOrdersScreen() {
                 </View>
 
                 <Text className="text-title-color font-bold text-label mb-2">
-                  Detalles del producto
+                  Comentarios del producto
                 </Text>
                 <TextInput
                   className="bg-input-color rounded-md px-4 py-3 text-black text-base mb-4 h-24"
-                  value={producto.detalles}
-                  onChangeText={(v) => handleChangeProducto(idx, "detalles", v)}
+                  value={producto.comentario}
+                  onChangeText={(v) => handleChangeProducto(idx, "comentario", v)}
                   multiline
                   style={{ textAlignVertical: "top", fontSize: 16 }}
                   placeholder=""

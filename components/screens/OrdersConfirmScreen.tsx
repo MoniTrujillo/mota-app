@@ -258,7 +258,8 @@ export default function OrdersConfirmScreen({
       const mappedOrders: Order[] = (pedidos || []).map((pedido: any) => {
         // Mapear productos
         const productos = (pedido.productos || []).map(
-          (p: any) => `${p.producto?.n_producto || "Producto"} (x${p.cantidad})`
+          (p: any) =>
+            `${p.producto?.n_producto || "Producto"} (x${p.cantidad})${p.comentario ? ` - Comentario: ${p.comentario}` : ""}`
         );
 
         // Obtener nombre del estado desde el id_estatusp
@@ -337,7 +338,7 @@ export default function OrdersConfirmScreen({
       // Mapear productos con información completa
       const productos = (pedidoDetalle.productos || []).map(
         (p: any) =>
-          `${p.producto?.n_producto || "Producto"} - Cantidad: ${p.cantidad} - Precio unitario: $${p.precio_unitario} - Subtotal: $${p.subtotal}`
+          `${p.producto?.n_producto || "Producto"} - Cantidad: ${p.cantidad} - Precio unitario: $${p.precio_unitario} - Subtotal: $${p.subtotal}${p.comentario ? ` - Comentario: ${p.comentario}` : ""}`
       );
 
       const estatusPedido = pedidoDetalle.estatus?.n_estatusp || "Pendiente";

@@ -50,6 +50,7 @@ type PedidoDetalle = {
     cantidad: number;
     precio_unitario: number;
     subtotal: number;
+    comentario?: string;
     producto: {
       precio: number;
       n_producto: string;
@@ -400,6 +401,11 @@ export default function PickupScreen() {
                               ${p.subtotal?.toLocaleString("es-CO") || "0"}
                             </Text>
                           </View>
+                          {p.comentario && (
+                            <Text className="text-gray-600 text-sm mt-2">
+                              Comentario: {p.comentario}
+                            </Text>
+                          )}
                         </View>
                       ))}
                     </View>
